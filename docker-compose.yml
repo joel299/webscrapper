@@ -1,0 +1,42 @@
+services:
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      BASIC_AUTH_USER: admin
+      BASIC_AUTH_PASS: admin
+      DATABASE_URL: postgres://postgres:postgres@db:5432/webscrapper
+      REDIS_URL: redis://redis:6379
+      SCRAPER_CONCURRENCY: 3
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: .
+    command: ["node", "dist/workers/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/webscrapper
+      REDIS_URL: redis://redis:6379
+      SCRAPER_CONCURRENCY: 3
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: webscrapper
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"

@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: API de Editais e Licitacoes
+  description: |
+    API responsavel por coletar, normalizar e disponibilizar editais publicos
+    obtidos via web scraping em multiplas fontes.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3001
+
+security:
+  - BasicAuth: []
+
+paths:
+  /api/editais:
+    get:
+      summary: Buscar editais
+      description: Retorna lista paginada de editais disponiveis
+      parameters:
+        - in: query
+          name: fonte
+          schema:
+            type: string
+            example: prosas
+        - in: query
+          name: status
+          schema:
+            type: string
+            example: aberto
+        - in: query
+          name: publico_alvo
+          schema:
+            type: string
+        - in: query
+          name: data_abertura_inicio
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: data_fechamento_fim
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: texto
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista de editais
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EditaisResponse'
+
+  /api/editais/{id}:
+    get:
+      summary: Leitura completa do edital
+      description: Retorna todos os dados detalhados de um edital especifico
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Edital completo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EditalDetalhado'
+
+  /api/internal/scraper/run:
+    post:
+      summary: Executar scraping manual (interno)
+      description: Dispara coleta manual de editais por fonte
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fonte:
+                  type: string
+                  example: prosas
+      responses:
+        '202':
+          description: Scraping iniciado
+
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+
+  schemas:
+    EditaisResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EditalResumo'
+
+    EditalResumo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        titulo:
+          type: string
+        fonte:
+          type: string
+        status:
+          type: string
+        data_fechamento:
+          type: string
+          format: date
+        link_edital:
+          type: string
+        link_pdf:
+          type: string
+
+    EditalDetalhado:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        titulo:
+          type: string
+        descricao_completa:
+          type: string
+        publico_alvo:
+          type: string
+        quem_pode_participar:
+          type: string
+        o_que_pode_fazer:
+          type: string
+        contatos:
+          $ref: '#/components/schemas/Contato'
+        arquivos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Arquivo'
+
+    Contato:
+      type: object
+      properties:
+        email:
+          type: array
+          items:
+            type: string
+            format: email
+        telefone:
+          type: array
+          items:
+            type: string
+        celular:
+          type: array
+          items:
+            type: string
+
+    Arquivo:
+      type: object
+      properties:
+        tipo:
+          type: string
+          example: pdf
+        url:
+          type: string

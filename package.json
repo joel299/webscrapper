@@ -1,0 +1,42 @@
+{
+  "name": "webscrapper",
+  "version": "0.0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--enable-source-maps tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "echo 'no linter configured'",
+    "api": "NODE_OPTIONS=--enable-source-maps tsx src/index.ts",
+    "worker": "NODE_OPTIONS=--enable-source-maps tsx src/workers/worker.ts",
+    "migrate": "node dist/db/migrate.js",
+    "migrate:dev": "NODE_OPTIONS=--enable-source-maps tsx src/db/migrate.ts",
+    "docker:build": "docker build -t ${IMAGE_NAME:-seuusuario/webscrapper}:${IMAGE_TAG:-0.0.0.1} .",
+    "docker:push": "docker push ${IMAGE_NAME:-seuusuario/webscrapper}:${IMAGE_TAG:-0.0.0.1}",
+    "docker:release": "npm run docker:build && npm run docker:push"
+  },
+  "dependencies": {
+    "@fastify/basic-auth": "^5.0.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/swagger": "^8.15.0",
+    "@fastify/swagger-ui": "^2.1.0",
+    "bullmq": "^5.10.0",
+    "cheerio": "^1.0.0-rc.12",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^4.5.1",
+    "pg": "^8.12.0",
+    "playwright": "^1.48.0",
+    "pino": "^9.3.0",
+    "redis": "^4.7.0",
+    "uuid": "^10.0.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
