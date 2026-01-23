@@ -1,2 +1,9 @@
-ALTER TABLE editais
-  ADD CONSTRAINT editais_link_edital_unique UNIQUE (link_edital);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes WHERE indexname = 'editais_link_edital_unique'
+    ) THEN
+        CREATE UNIQUE INDEX editais_link_edital_unique ON editais(link_edital);
+    END IF;
+END
+$$;
