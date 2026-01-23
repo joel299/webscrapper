@@ -42,7 +42,7 @@ export async function buildServer() {
         description: "API responsavel por coletar, normalizar e disponibilizar editais publicos",
         version: "1.0.0"
       },
-      servers: [{ url: "http://localhost:3001" }],
+      servers: [{ url: "/" }],
       components: {
         securitySchemes: {
           BasicAuth: {
