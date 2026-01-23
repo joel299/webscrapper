@@ -1,6 +1,6 @@
 services:
   api:
-    image: ${IMAGE_NAME:-soueujoe/webscrapper}:${IMAGE_TAG:-0.0.0.1}
+    image: ${IMAGE_NAME:-soueujoe/webscrapper}:${IMAGE_TAG:-0.0.0.3}
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -24,7 +24,7 @@ services:
       - network_public
 
   worker:
-    image: ${IMAGE_NAME:-soueujoe/webscrapper}:${IMAGE_TAG:-0.0.0.1}
+    image: ${IMAGE_NAME:-soueujoe/webscrapper}:${IMAGE_TAG:-0.0.0.3}
     environment:
       NODE_ENV: production
       DATABASE_URL: postgres://postgres:4ed89e9ed67d243049f295397c8daa98@db:5432/webscrapper
