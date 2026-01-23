@@ -4,9 +4,9 @@ BEGIN
         SELECT 1
         FROM pg_indexes
         WHERE schemaname = 'public'
-        AND indexname = 'editais_link_edital_unique'
+        AND indexname = 'editais_link'
     ) THEN
-        CREATE UNIQUE INDEX editais_link_edital_unique ON editais(link_edital);
+        CREATE UNIQUE INDEX editais_link ON editais(link_edital);
     END IF;
 END
 $$;
