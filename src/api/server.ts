@@ -23,6 +23,10 @@ export async function buildServer() {
   });
 
   app.addHook("onRequest", (request, reply, done) => {
+    if (request.method === "OPTIONS") {
+      done();
+      return;
+    }
     const url = request.raw.url ?? "";
     if (url.startsWith("/docs")) {
       done();
