@@ -23,7 +23,7 @@ export async function listEditais(filters: Record<string, unknown>) {
   values.push(limit, offset);
 
   const { rows } = await pool.query(
-    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf
+    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf, descricao
      FROM editais ${where}
      ORDER BY data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values
@@ -71,23 +71,67 @@ export async function getEditalById(id: string) {
 
 export async function upsertEditaisFromList(
   fonte: string,
-  items: Array<{ titulo: string; link: string }>
+  items: Array<{
+    titulo: string;
+    link: string;
+    status?: string | null;
+    data_fechamento?: string | Date | null;
+    descricao?: string | null;
+    link_pdf?: string | null;
+  }>
 ) {
   if (items.length === 0) return { inserted: 0 };
 
   const values: Array<string | null> = [];
   const placeholders: string[] = [];
+  let validCount = 0;
 
-  items.forEach((item, index) => {
-    const base = index * 3;
-    values.push(fonte, item.titulo, item.link);
-    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
+  items.forEach((item) => {
+    const rawTitle = (item.titulo || "").trim();
+    if (!rawTitle || /^acessar$/i.test(rawTitle) || /^saiba mais$/i.test(rawTitle) || /^leia mais$/i.test(rawTitle)) {
+      return;
+    }
+    if (!item.link) return;
+
+    let fechaDate: string | null = null;
+    if (item.data_fechamento) {
+      if (typeof item.data_fechamento === "string") {
+        const d = item.data_fechamento.trim();
+        const brMatch = d.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})$/);
+        if (brMatch) {
+          const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
+          fechaDate = `${year}-${brMatch[2].padStart(2, "0")}-${brMatch[1].padStart(2, "0")}`;
+        } else if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+          fechaDate = d.substring(0, 10);
+        }
+      } else if (item.data_fechamento instanceof Date && !isNaN(item.data_fechamento.getTime())) {
+        fechaDate = item.data_fechamento.toISOString().split("T")[0];
+      }
+    }
+
+    const base = validCount * 6;
+    values.push(
+      fonte,
+      rawTitle,
+      item.link,
+      item.status?.trim() || "Aberto",
+      fechaDate,
+      item.descricao?.trim() || null
+    );
+    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
+    validCount++;
   });
 
+  if (validCount === 0) return { inserted: 0 };
+
   const query = `
-    INSERT INTO editais (fonte, titulo, link_edital)
+    INSERT INTO editais (fonte, titulo, link_edital, status, data_fechamento, descricao)
     VALUES ${placeholders.join(", ")}
-    ON CONFLICT (link_edital) DO NOTHING
+    ON CONFLICT (link_edital) DO UPDATE SET
+      titulo = EXCLUDED.titulo,
+      status = COALESCE(EXCLUDED.status, editais.status),
+      data_fechamento = COALESCE(EXCLUDED.data_fechamento, editais.data_fechamento),
+      descricao = COALESCE(EXCLUDED.descricao, editais.descricao)
   `;
 
   const result = await pool.query(query, values);

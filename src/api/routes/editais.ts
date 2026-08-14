@@ -38,7 +38,8 @@ export async function editaisRoutes(app: FastifyInstance) {
                   link_edital: { type: "string" },
                   link_pdf: { type: ["string", "null"] },
                   status: { type: ["string", "null"] },
-                  data_fechamento: { type: ["string", "null"], format: "date" }
+                  data_fechamento: { type: ["string", "null"], format: "date" },
+                  descricao: { type: ["string", "null"] }
                 }
               }
             }

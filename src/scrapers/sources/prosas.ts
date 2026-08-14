@@ -19,7 +19,7 @@ export async function prosasScraper() {
           const titulo = (el.textContent ?? "").trim();
           return { href, titulo };
         })
-        .filter((item) => item.href && item.titulo);
+        .filter((item) => item.href && item.titulo && !/^acessar$/i.test(item.titulo) && !/^saiba mais$/i.test(item.titulo));
     });
 
     const html = await page.content();

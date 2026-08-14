@@ -9,7 +9,9 @@ export function parseProsasList(html: string) {
     const href = $(el).attr("href") ?? "";
     if (href.includes("/editais/")) {
       const titulo = $(el).text().trim();
-      if (titulo) items.push({ titulo, link: new URL(href, baseUrl).toString() });
+      if (titulo && !/^acessar$/i.test(titulo) && !/^saiba mais$/i.test(titulo)) {
+        items.push({ titulo, link: new URL(href, baseUrl).toString() });
+      }
     }
   });
 
