@@ -9,6 +9,7 @@ RUN npx playwright install --with-deps chromium
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY public ./public
 
 RUN npm run build
 

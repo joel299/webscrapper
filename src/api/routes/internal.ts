@@ -11,8 +11,9 @@ export async function internalRoutes(app: FastifyInstance) {
       body: {
         type: "object",
         properties: {
-          fonte: { type: "string" }
-        }
+          fonte: { type: "string", maxLength: 100 }
+        },
+        additionalProperties: false
       }
     }
   }, async (request, reply) => {
@@ -30,7 +31,8 @@ export async function internalRoutes(app: FastifyInstance) {
       params: {
         type: "object",
         required: ["id"],
-        properties: { id: { type: "string" } }
+        properties: { id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,128}$" } },
+        additionalProperties: false
       },
       response: {
         200: {
@@ -72,7 +74,8 @@ export async function internalRoutes(app: FastifyInstance) {
       body: {
         type: "object",
         required: ["url"],
-        properties: { url: { type: "string" } }
+        properties: { url: { type: "string", format: "uri", maxLength: 2048 } },
+        additionalProperties: false
       },
       response: {
         200: {
@@ -107,8 +110,16 @@ export async function internalRoutes(app: FastifyInstance) {
         }
       }
     }
-  }, async (request) => {
+  }, async (request, reply) => {
     const body = request.body as { url: string };
-    return fetchEditalDetail(body.url);
+    try {
+      return await fetchEditalDetail(body.url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "URL rejeitada";
+      if (/URL inválida|Destino local|Destino privado|porta explícita|não resolvido/i.test(message)) {
+        return reply.code(400).send({ error: { code: "INVALID_TARGET", message } });
+      }
+      throw error;
+    }
   });
 }

@@ -9,15 +9,16 @@ export async function editaisRoutes(app: FastifyInstance) {
       querystring: {
         type: "object",
         properties: {
-          fonte: { type: "string" },
-          status: { type: "string" },
-          publico_alvo: { type: "string" },
+          fonte: { type: "string", maxLength: 100 },
+          status: { type: "string", maxLength: 50 },
+          publico_alvo: { type: "string", maxLength: 200 },
           data_abertura_inicio: { type: "string", format: "date" },
           data_fechamento_fim: { type: "string", format: "date" },
-          texto: { type: "string" },
-          page: { type: "integer", default: 1 },
-          limit: { type: "integer", default: 20 }
-        }
+          texto: { type: "string", maxLength: 200 },
+          page: { type: "integer", minimum: 1, maximum: 10_000, default: 1 },
+          limit: { type: "integer", minimum: 1, maximum: 100, default: 20 }
+        },
+        additionalProperties: false
       },
       response: {
         200: {
@@ -55,7 +56,8 @@ export async function editaisRoutes(app: FastifyInstance) {
       params: {
         type: "object",
         required: ["id"],
-        properties: { id: { type: "string", format: "uuid" } }
+        properties: { id: { type: "string", format: "uuid" } },
+        additionalProperties: false
       }
     }
   }, async (request, reply) => {

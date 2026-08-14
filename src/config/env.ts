@@ -1,5 +1,12 @@
-import "dotenv/config";
+import { config } from "dotenv";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { z } from "zod";
+
+// Secrets live in one profile-aware global file; local .env remains an override
+// for development. Existing process environment variables always win.
+config({ path: join(process.env.HERMES_HOME ?? join(homedir(), ".hermes"), ".env") });
+config();
 
 const envSchema = z.object({
   NODE_ENV: z.string().default("development"),

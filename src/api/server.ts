@@ -1,13 +1,15 @@
 import fastify from "fastify";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import basicAuth from "@fastify/basic-auth";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
 import { env } from "../config/env.js";
 import { registerRoutes } from "./routes/index.js";
 
 export async function buildServer() {
   const app = fastify({ logger: true });
+  const frontendPath = fileURLToPath(new URL("../../public/index.html", import.meta.url));
 
   await app.register(cors, { origin: true });
 
@@ -28,7 +30,7 @@ export async function buildServer() {
       return;
     }
     const url = request.raw.url ?? "";
-    if (url.startsWith("/docs")) {
+    if (url === "/" || url === "/webscrapper" || url === "/webscrapper/" || url.startsWith("/docs") || url === "/openapi.json") {
       done();
       return;
     }
@@ -55,16 +57,25 @@ export async function buildServer() {
     }
   });
 
-  await app.register(swaggerUi, {
-    routePrefix: "/docs",
-    transformSpecification: (swaggerObject, request) => {
-      const proto = (request.headers["x-forwarded-proto"] as string) ?? request.protocol ?? "http";
-      const host = request.headers.host ?? "localhost";
-      return {
-        ...swaggerObject,
-        servers: [{ url: `${proto}://${host}` }]
-      };
-    }
+  app.get("/openapi.json", async () => app.swagger());
+
+  const serveFrontend = async (_request: unknown, reply: { type: (value: string) => { send: (value: string) => void } }) => {
+    reply.type("text/html").send(await readFile(frontendPath, "utf8"));
+  };
+
+  app.get("/", serveFrontend);
+  app.get("/webscrapper", serveFrontend);
+  app.get("/webscrapper/", serveFrontend);
+
+  app.get("/docs", async (_request, reply) => {
+    reply.type("text/html").send(`<!doctype html>
+<html lang="pt-BR">
+  <head><meta charset="utf-8"><title>API de Editais</title></head>
+  <body>
+    <script id="api-reference" data-url="/openapi.json"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>`);
   });
 
   await registerRoutes(app);

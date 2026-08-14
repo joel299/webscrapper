@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WebScrapper — Editais</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: #101114; color: #f3f4f6; }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 60px; }
+    h1 { margin: 0 0 6px; font-size: 30px; }
+    p { color: #aeb4c0; }
+    .card { background: #191b21; border: 1px solid #2b2f38; border-radius: 12px; padding: 18px; margin-top: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    label { display: grid; gap: 6px; color: #aeb4c0; font-size: 13px; }
+    input, button { border-radius: 8px; border: 1px solid #3b414d; padding: 10px 12px; font: inherit; }
+    input { background: #101114; color: #fff; }
+    button { background: #c9a227; color: #161616; border-color: #c9a227; cursor: pointer; font-weight: 700; }
+    button.secondary { background: transparent; color: #f3f4f6; border-color: #4b5563; }
+    .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .status { min-height: 22px; color: #c9a227; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th, td { border-bottom: 1px solid #2b2f38; padding: 10px 8px; text-align: left; vertical-align: top; }
+    th { color: #aeb4c0; font-size: 13px; }
+    td a { color: #8ab4f8; }
+    .muted { color: #8b93a1; }
+    .hidden { display: none; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr 1fr; } table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>WebScrapper</h1>
+  <p>Consulta e coleta de editais públicos.</p>
+
+  <section class="card">
+    <strong>Acesso à API</strong>
+    <div class="grid" style="margin-top:12px">
+      <label>Usuário <input id="user" autocomplete="username" value="admin"></label>
+      <label>Senha <input id="pass" type="password" autocomplete="current-password"></label>
+    </div>
+    <div class="actions"><button id="saveAuth">Usar credenciais</button><span id="authStatus" class="status"></span></div>
+  </section>
+
+  <section class="card">
+    <strong>Filtros</strong>
+    <div class="grid" style="margin-top:12px">
+      <label>Fonte <input id="fonte" maxlength="100"></label>
+      <label>Status <input id="status" maxlength="50"></label>
+      <label>Texto <input id="texto" maxlength="200"></label>
+      <label>Limite <input id="limit" type="number" min="1" max="100" value="20"></label>
+    </div>
+    <div class="actions">
+      <button id="search">Buscar editais</button>
+      <button id="scrape" class="secondary">Enfileirar scraping</button>
+    </div>
+    <div id="statusMessage" class="status" role="status"></div>
+  </section>
+
+  <section class="card">
+    <strong>Resultados <span id="total" class="muted"></span></strong>
+    <table>
+      <thead><tr><th>Título</th><th>Fonte</th><th>Status</th><th>Fechamento</th><th>Link</th></tr></thead>
+      <tbody id="results"><tr><td colspan="5" class="muted">Faça uma busca.</td></tr></tbody>
+    </table>
+  </section>
+</main>
+<script>
+  const state = { auth: "" };
+  const API_BASE = location.pathname.startsWith("/webscrapper") ? "/webscrapper" : "";
+  const $ = (id) => document.getElementById(id);
+  const statusMessage = (text, error = false) => { $("statusMessage").textContent = text; $("statusMessage").style.color = error ? "#f87171" : "#c9a227"; };
+  const request = async (path, options = {}) => {
+    const headers = { ...(options.headers || {}) };
+    if (state.auth) headers.Authorization = `Basic ${state.auth}`;
+    const response = await fetch(path, { ...options, headers });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.message || data?.error?.message || `HTTP ${response.status}`);
+    return data;
+  };
+  const query = () => {
+    const params = new URLSearchParams({ limit: $("limit").value || "20", page: "1" });
+    for (const id of ["fonte", "status", "texto"]) if ($(id).value.trim()) params.set(id, $(id).value.trim());
+    return params;
+  };
+  function render(data) {
+    $("total").textContent = `(${data.total ?? 0})`;
+    const tbody = $("results"); tbody.replaceChildren();
+    if (!data.items?.length) { const row = tbody.insertRow(); const cell = row.insertCell(); cell.colSpan = 5; cell.className = "muted"; cell.textContent = "Nenhum edital encontrado."; return; }
+    for (const item of data.items) {
+      const row = tbody.insertRow();
+      for (const value of [item.titulo, item.fonte, item.status, item.data_fechamento]) row.insertCell().textContent = value || "—";
+      const link = row.insertCell();
+      if (item.link_edital) { const anchor = document.createElement("a"); anchor.href = item.link_edital; anchor.target = "_blank"; anchor.rel = "noopener noreferrer"; anchor.textContent = "Abrir"; link.append(anchor); } else link.textContent = "—";
+    }
+  }
+  $("saveAuth").onclick = () => { state.auth = btoa(`${$("user").value}:${$("pass").value}`); $("authStatus").textContent = "Credenciais carregadas nesta sessão."; };
+  $("search").onclick = async () => { try { statusMessage("Consultando..."); render(await request(`${API_BASE}/api/editais/?${query()}`)); statusMessage("Consulta concluída."); } catch (error) { statusMessage(error.message, true); } };
+  $("scrape").onclick = async () => { try { statusMessage("Enfileirando scraping..."); const data = await request(`${API_BASE}/api/internal/scraper/run`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fonte: $("fonte").value.trim() || "all" }) }); statusMessage(`Job ${data.jobId} enfileirado.`); } catch (error) { statusMessage(error.message, true); } };
+</script>
+</body>
+</html>

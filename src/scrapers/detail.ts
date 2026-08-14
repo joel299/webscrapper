@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { withBrowser } from "./strategies/browser.js";
 import { extractContacts } from "../utils/contacts.js";
+import { assertSafeExternalUrl, capExtractedText } from "../utils/safety.js";
 
 function normalizeText(text: string) {
   return text.replace(/\s+/g, " ").trim();
@@ -52,8 +53,9 @@ function pickFileLinks(links: Array<{ url: string; titulo: string | null }>) {
 }
 
 export async function fetchEditalDetail(url: string) {
+  const safeUrl = await assertSafeExternalUrl(url);
   return withBrowser(async (page) => {
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(safeUrl.toString(), { waitUntil: "domcontentloaded", timeout: 20_000 });
     await page.waitForTimeout(2000);
 
     const html = await page.content();
@@ -75,7 +77,7 @@ export async function fetchEditalDetail(url: string) {
     const subareasRaw = extractSectionText($, ["Subarea", "Subárea", "Subareas", "Subáreas"]);
     const subareas = subareasRaw ? subareasRaw.split(/\s*[;,\n]\s*/).map((item) => item.trim()).filter(Boolean) : [];
 
-    const baseUrl = new URL(url).origin;
+    const baseUrl = safeUrl.origin;
     const links = extractLinks($, baseUrl);
     const arquivos = pickFileLinks(links).map((item) => ({
       tipo: item.url.toLowerCase().includes(".pdf") ? "pdf" : "anexo",
@@ -85,11 +87,11 @@ export async function fetchEditalDetail(url: string) {
 
     const mainText = $("main, [role='main']").first().text();
     const rawText = mainText || $("body").text();
-    const textoCompleto = sanitizeText(rawText);
+    const textoCompleto = capExtractedText(sanitizeText(rawText));
     const contatos = extractContacts(textoCompleto);
 
     return {
-      url,
+      url: safeUrl.toString(),
       titulo: titulo || null,
       descricao: descricao || null,
       area_tematica: areaTematica || null,
