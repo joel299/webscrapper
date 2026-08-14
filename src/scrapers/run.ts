@@ -8,6 +8,8 @@ const scrapers = {
   capta: captaScraper
 };
 
+export const availableSources = Object.keys(scrapers);
+
 const fonteAliases: Record<string, keyof typeof scrapers> = {
   "https://prosas.com.br/editais": "prosas",
   "https://www.ligacriativa.com.br/editais-abertos": "ligacriativa",

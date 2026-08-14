@@ -4,14 +4,40 @@ export async function listEditais(filters: Record<string, unknown>) {
   const page = Number(filters.page ?? 1);
   const limit = Number(filters.limit ?? 20);
   const offset = (page - 1) * limit;
+  const values: Array<string | number> = [];
+  const conditions: string[] = [];
+
+  const addFilter = (value: unknown, expression: string) => {
+    if (typeof value !== "string" || !value.trim()) return;
+    values.push(`%${value.trim()}%`);
+    conditions.push(expression.replace("$VALUE", `$${values.length}`));
+  };
+
+  addFilter(filters.fonte, "fonte ILIKE $VALUE");
+  addFilter(filters.status, "status ILIKE $VALUE");
+  addFilter(filters.texto, "(titulo ILIKE $VALUE OR descricao ILIKE $VALUE)");
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limitIndex = values.length + 1;
+  const offsetIndex = values.length + 2;
+  values.push(limit, offset);
 
   const { rows } = await pool.query(
-    "SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf FROM editais ORDER BY data_fechamento DESC NULLS LAST LIMIT $1 OFFSET $2",
-    [limit, offset]
+    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf
+     FROM editais ${where}
+     ORDER BY data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    values
   );
 
-  const count = await pool.query("SELECT COUNT(*)::int AS total FROM editais");
+  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM editais ${where}`, values.slice(0, -2));
   return { total: count.rows[0]?.total ?? 0, items: rows };
+}
+
+export async function listEditalSources() {
+  const { rows } = await pool.query(
+    "SELECT DISTINCT fonte FROM editais WHERE fonte IS NOT NULL AND fonte <> '' ORDER BY fonte"
+  );
+  return rows.map((row) => row.fonte as string);
 }
 
 export async function getEditalById(id: string) {

@@ -16,6 +16,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   REDIS_URL: z.string(),
   SCRAPER_CONCURRENCY: z.coerce.number().default(3),
+  SCRAPER_INTERVAL_MINUTES: z.coerce.number().int().min(1).default(15),
   USER_AGENT_ROTATION: z.coerce.boolean().default(true)
 });
 

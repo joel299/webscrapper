@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { listEditais, getEditalById } from "../../db/repositories/editais.js";
+import { listEditais, listEditalSources, getEditalById } from "../../db/repositories/editais.js";
+import { availableSources } from "../../scrapers/run.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -47,6 +48,17 @@ export async function editaisRoutes(app: FastifyInstance) {
     }
   }, async (request) => {
     return listEditais(request.query as Record<string, unknown>);
+  });
+
+  app.get("/sources", {
+    schema: {
+      summary: "Listar fontes disponíveis",
+      description: "Retorna as fontes configuradas e as fontes já presentes no banco.",
+      response: { 200: { type: "object", properties: { sources: { type: "array", items: { type: "string" } } } } }
+    }
+  }, async () => {
+    const storedSources = await listEditalSources();
+    return { sources: [...new Set([...availableSources, ...storedSources])] };
   });
 
   app.get("/:id", {
