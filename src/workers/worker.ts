@@ -28,11 +28,10 @@ const automaticJobOptions = {
 };
 
 await scraperQueue.add("run", { fonte: "all" }, {
-  ...automaticJobOptions,
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 1000 },
+  attempts: 3,
   jobId: "automatic-initial-scrape"
 });
 
-await scraperQueue.add("run", { fonte: "all" }, {
-  ...automaticJobOptions,
-  jobId: "automatic-periodic-scrape"
-});
+await scraperQueue.add("run", { fonte: "all" }, automaticJobOptions);
