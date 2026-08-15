@@ -101,7 +101,7 @@ export async function editaisRoutes(app: FastifyInstance) {
     return { modos: TECHNOLOGY_QUERIES };
   });
 
-  app.get("/:id", {
+  app.get("/:id(^[-a-fA-F0-9]{36}$)", {
     schema: {
       summary: "Leitura completa do edital",
       description: "Retorna os detalhes do edital armazenado no banco.",
