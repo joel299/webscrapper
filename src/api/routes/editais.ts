@@ -41,7 +41,14 @@ export async function editaisRoutes(app: FastifyInstance) {
                   link_pdf: { type: ["string", "null"] },
                   status: { type: ["string", "null"] },
                   data_fechamento: { type: ["string", "null"], format: "date" },
-                  descricao: { type: ["string", "null"] }
+                  descricao: { type: ["string", "null"] },
+                  valor_texto: { type: ["string", "null"] },
+                  periodo_texto: { type: ["string", "null"] },
+                  area_tematica: { type: ["string", "null"] },
+                  publico_alvo: { type: ["string", "null"] },
+                  ods_texto: { type: ["string", "null"] },
+                  whatsapp: { type: ["string", "null"] },
+                  site_oficial: { type: ["string", "null"] }
                 }
               }
             }

@@ -1,12 +1,22 @@
 import { chromium } from "playwright";
 import { env } from "../../config/env.js";
-import { upsertEditaisFromList } from "../../db/repositories/editais.js";
-
-let cachedStorageStatePath = "/tmp/prosas_storage.json";
+import { upsertEditaisFromList, type EditalRichItem } from "../../db/repositories/editais.js";
 
 function stripHtml(html: string) {
   if (!html) return "";
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function money(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (isNaN(n)) return null;
+  return `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function whatsappFromDescription(text: string) {
+  const m = text.match(/[Ww]hats[Aa]pp[^\d]{0,20}\(?\d{2}\)?\s*\d[-.\s]?\d{4}[-.\s]?\d{4}|\(\d{2}\)\s*\d[-.\s]?\d{4}[-.\s]?\d{4}/);
+  return m ? m[0].replace(/^\s*[,-]+\s*/, "").trim() : null;
 }
 
 export async function prosasScraper() {
@@ -15,7 +25,7 @@ export async function prosasScraper() {
   const page = await context.newPage();
 
   const user = env.PROSAS_USER || process.env.PROSAS_USER || "joel.acosta.quintana@gmail.com";
-  const pass = env.PROSAS_PASS || process.env.PROSAS_PASS || "Dj@7408-2012";
+  const pass = env.PROSAS_PASS || process.env.PROSAS_PASS || "";
 
   let bearerToken = "";
   page.on("request", (req) => {
@@ -25,14 +35,13 @@ export async function prosasScraper() {
   });
 
   try {
-    // 1. Perform Login
     await page.goto("https://prosas.com.br/users/sign_in", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(3000);
 
-    const emailInput = page.locator('#user_email').filter({ hasNot: page.locator('[style*="display: none"]') }).last();
-    const passInput = page.locator('#user_password').filter({ hasNot: page.locator('[style*="display: none"]') }).last();
+    const emailInput = page.locator("#user_email").filter({ hasNot: page.locator('[style*="display: none"]') }).last();
+    const passInput = page.locator("#user_password").filter({ hasNot: page.locator('[style*="display: none"]') }).last();
 
-    if (await emailInput.count() > 0) {
+    if ((await emailInput.count()) > 0) {
       await emailInput.fill(user);
       await passInput.fill(pass);
       const submitBtn = page.locator('input[type="submit"][name="commit"]').last();
@@ -43,22 +52,18 @@ export async function prosasScraper() {
       await page.waitForTimeout(3000);
     }
 
-    // 2. Open Editais Catalog to capture token
     await page.goto("https://produtos.prosas.com.br/editais", { waitUntil: "networkidle" });
     await page.waitForTimeout(3000);
 
     if (!bearerToken) {
       // eslint-disable-next-line no-console
-      console.warn("[prosas] Bearer token not captured, attempting fallback");
+      console.warn("[prosas] Bearer token not captured");
     }
 
-    // 3. Query Open Editais API
-    const listUrl = "https://prosas.com.br/selecao/api/v2/third_party/oportunidades/inscricoes_abertas?include=area_interesses,incentivador&page[page]=1&page[size]=50";
+    const listUrl =
+      "https://prosas.com.br/selecao/api/v2/third_party/oportunidades/inscricoes_abertas?page[page]=1&page[size]=50";
     const apiRes = await context.request.get(listUrl, {
-      headers: {
-        Authorization: bearerToken || "",
-        Referer: "https://produtos.prosas.com.br/"
-      }
+      headers: { Authorization: bearerToken, Referer: "https://produtos.prosas.com.br/" }
     });
 
     if (!apiRes.ok()) {
@@ -70,14 +75,7 @@ export async function prosasScraper() {
     const apiData = (await apiRes.json()) as { data?: Array<{ id: string; attributes: Record<string, any> }> };
     const rawItems = apiData.data ?? [];
 
-    const mappedItems: Array<{
-      titulo: string;
-      link: string;
-      status: string;
-      data_fechamento: string | null;
-      descricao: string | null;
-      link_pdf: string | null;
-    }> = [];
+    const mappedItems: EditalRichItem[] = [];
 
     for (const item of rawItems) {
       const attrs = item.attributes ?? {};
@@ -86,40 +84,62 @@ export async function prosasScraper() {
       if (!titulo) continue;
 
       const link = `https://produtos.prosas.com.br/editais/edital?edital_id=${id}`;
-      const data_fechamento = attrs.encerramento_das_inscricoes || attrs.data_final_inscricoes || null;
-      const status = attrs.prazo === "definido" ? "Aberto" : "Aberto";
 
       let detailAttrs: Record<string, any> = {};
-      let detailPdf: string | null = null;
+      let arquivos: Array<{ tipo: string; url: string; titulo: string }> = [];
+      let byType: Record<string, any[]> = {};
+
       if (bearerToken) {
         const detailRes = await context.request.get(
-          `https://prosas.com.br/selecao/api/v2/third_party/oportunidades/${id}?include=area_interesses,incentivador,anexos,sites,locais,ods`,
+          `https://prosas.com.br/selecao/api/v2/third_party/oportunidades/${id}?include=area_interesses,incentivador,anexos,sites,locais,ods,culturas,publico_alvos,arquivos,fonte_financiamentos`,
           { headers: { Authorization: bearerToken, Referer: "https://produtos.prosas.com.br/" } }
         );
         if (detailRes.ok()) {
-          const detailJson = await detailRes.json() as { data?: { attributes?: Record<string, any> }; included?: Array<{ type: string; attributes?: Record<string, any> }> };
+          const detailJson = (await detailRes.json()) as {
+            data?: { attributes?: Record<string, any> };
+            included?: Array<{ type: string; attributes?: Record<string, any> }>;
+          };
           detailAttrs = detailJson.data?.attributes ?? {};
-          const included = detailJson.included ?? [];
-          detailPdf = included
-            .filter((entry) => entry.type === "sites" || entry.type === "arquivo")
-            .map((entry) => entry.attributes?.link)
-            .find((link): link is string => typeof link === "string") ?? null;
+          (detailJson.included ?? []).forEach((entry) => {
+            (byType[entry.type] = byType[entry.type] || []).push(entry.attributes ?? {});
+          });
+          arquivos = (byType["arquivo"] || []).map((a) => ({
+            tipo: "pdf",
+            url: a.url || "",
+            titulo: a.descricao || a.arquivo_file_name || ""
+          }));
         }
       }
 
-      const empresa = (detailAttrs.nome_empresa || attrs.nome_empresa) ? `Patrocinador: ${detailAttrs.nome_empresa || attrs.nome_empresa}. ` : "";
-      const valor = (detailAttrs.valor_total_disponivel || attrs.valor_total_disponivel) ? `Valor Total: R$ ${detailAttrs.valor_total_disponivel || attrs.valor_total_disponivel}. ` : "";
-      const descText = stripHtml(detailAttrs.descricao || attrs.descricao || "");
-      const descricao = `${empresa}${valor}${descText}`.trim() || null;
-      const link_pdf = (detailAttrs.link && /\.pdf($|\?)/i.test(detailAttrs.link)) ? detailAttrs.link : detailPdf;
+      const descricao = stripHtml(detailAttrs.descricao || attrs.descricao || "") || null;
+
+      const data_fechamento =
+        detailAttrs.encerramento_das_inscricoes || detailAttrs.data_final_inscricoes || attrs.encerramento_das_inscricoes || null;
+
+      const inicio = String(detailAttrs.inicio_inscricoes || attrs.inicio_inscricoes || "").substring(0, 10) || null;
+      const periodoTexto = inicio && data_fechamento ? `Inscrições de ${inicio} até ${data_fechamento}` : data_fechamento ? `Inscrições até ${data_fechamento}` : null;
+
+      const valorTexto = money(detailAttrs.valor_total_disponivel || attrs.valor_total_disponivel);
+      const areaTematica = (byType["area_interesse"] || []).map((a) => a.nome).filter(Boolean).join(", ") || null;
+      const publicoAlvo = (byType["publico_alvo"] || []).map((a) => a.nome || a.descricao).filter(Boolean).join(", ") || null;
+      const odsTexto = (byType["ods"] || []).map((o) => o.descricao || o.nome).filter(Boolean).join(", ") || null;
+      const siteOficial = (byType["sites"] || []).map((s) => s.link).find(Boolean) || null;
+      const whatsapp = whatsappFromDescription(descricao || "");
 
       mappedItems.push({
         titulo,
         link,
-        status,
+        status: "Aberto",
         data_fechamento,
         descricao,
-        link_pdf
+        valorTexto,
+        periodoTexto,
+        areaTematica,
+        publicoAlvo,
+        odsTexto,
+        whatsapp,
+        siteOficial,
+        arquivos
       });
     }
 

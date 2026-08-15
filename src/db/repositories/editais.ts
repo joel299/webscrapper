@@ -1,5 +1,22 @@
 import { pool } from "../pool.js";
 
+export interface EditalRichItem {
+  titulo: string;
+  link: string;
+  status?: string | null;
+  data_fechamento?: string | Date | null;
+  descricao?: string | null;
+  link_pdf?: string | null;
+  valorTexto?: string | null;
+  periodoTexto?: string | null;
+  areaTematica?: string | null;
+  publicoAlvo?: string | null;
+  odsTexto?: string | null;
+  whatsapp?: string | null;
+  siteOficial?: string | null;
+  arquivos?: Array<{ tipo: string; url: string; titulo: string }>;
+}
+
 export async function listEditais(filters: Record<string, unknown>) {
   const page = Number(filters.page ?? 1);
   const limit = Number(filters.limit ?? 20);
@@ -28,7 +45,8 @@ export async function listEditais(filters: Record<string, unknown>) {
   values.push(limit, offset);
 
   const { rows } = await pool.query(
-    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf, descricao
+    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf, descricao,
+            valor_texto, periodo_texto, area_tematica, publico_alvo, ods_texto, whatsapp, site_oficial
      FROM editais ${where}
      ORDER BY data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values
@@ -59,7 +77,7 @@ export async function getEditalById(id: string) {
   );
 
   const arquivos = await pool.query(
-    "SELECT tipo, url FROM editais_arquivos WHERE edital_id = $1",
+    "SELECT id, tipo, url, titulo FROM editais_arquivos WHERE edital_id = $1 ORDER BY criado_em",
     [id]
   );
 
@@ -74,17 +92,20 @@ export async function getEditalById(id: string) {
   };
 }
 
-export async function upsertEditaisFromList(
-  fonte: string,
-  items: Array<{
-    titulo: string;
-    link: string;
-    status?: string | null;
-    data_fechamento?: string | Date | null;
-    descricao?: string | null;
-    link_pdf?: string | null;
-  }>
-) {
+function normalizeDate(raw: string | Date | null | undefined): string | null {
+  if (!raw) return null;
+  if (raw instanceof Date && !isNaN(raw.getTime())) return raw.toISOString().split("T")[0];
+  const d = String(raw).trim();
+  const br = d.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})$/);
+  if (br) {
+    const year = br[3].length === 2 ? `20${br[3]}` : br[3];
+    return `${year}-${br[2].padStart(2, "0")}-${br[1].padStart(2, "0")}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.substring(0, 10);
+  return null;
+}
+
+export async function upsertEditaisFromList(fonte: string, items: EditalRichItem[]) {
   if (items.length === 0) return { inserted: 0 };
 
   const values: Array<string | null> = [];
@@ -98,47 +119,76 @@ export async function upsertEditaisFromList(
     }
     if (!item.link) return;
 
-    let fechaDate: string | null = null;
-    if (item.data_fechamento) {
-      if (typeof item.data_fechamento === "string") {
-        const d = item.data_fechamento.trim();
-        const brMatch = d.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})$/);
-        if (brMatch) {
-          const year = brMatch[3].length === 2 ? `20${brMatch[3]}` : brMatch[3];
-          fechaDate = `${year}-${brMatch[2].padStart(2, "0")}-${brMatch[1].padStart(2, "0")}`;
-        } else if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
-          fechaDate = d.substring(0, 10);
-        }
-      } else if (item.data_fechamento instanceof Date && !isNaN(item.data_fechamento.getTime())) {
-        fechaDate = item.data_fechamento.toISOString().split("T")[0];
-      }
-    }
+    const data_fechamento = normalizeDate(item.data_fechamento);
 
-    const base = validCount * 6;
+    const base = validCount * 14;
     values.push(
       fonte,
       rawTitle,
       item.link,
       item.status?.trim() || "Aberto",
-      fechaDate,
-      item.descricao?.trim() || null
+      data_fechamento,
+      item.descricao?.trim() || null,
+      item.valorTexto?.trim() || null,
+      item.periodoTexto?.trim() || null,
+      item.areaTematica?.trim() || null,
+      item.publicoAlvo?.trim() || null,
+      item.odsTexto?.trim() || null,
+      item.whatsapp?.trim() || null,
+      item.siteOficial?.trim() || null,
+      item.link_pdf?.trim() || null
     );
-    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
+    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14})`);
     validCount++;
   });
 
   if (validCount === 0) return { inserted: 0 };
 
   const query = `
-    INSERT INTO editais (fonte, titulo, link_edital, status, data_fechamento, descricao)
+    INSERT INTO editais (fonte, titulo, link_edital, status, data_fechamento, descricao,
+                         valor_texto, periodo_texto, area_tematica, publico_alvo, ods_texto,
+                         whatsapp, site_oficial, link_pdf)
     VALUES ${placeholders.join(", ")}
     ON CONFLICT (link_edital) DO UPDATE SET
       titulo = EXCLUDED.titulo,
       status = COALESCE(EXCLUDED.status, editais.status),
       data_fechamento = COALESCE(EXCLUDED.data_fechamento, editais.data_fechamento),
-      descricao = COALESCE(EXCLUDED.descricao, editais.descricao)
+      descricao = COALESCE(EXCLUDED.descricao, editais.descricao),
+      valor_texto = COALESCE(EXCLUDED.valor_texto, editais.valor_texto),
+      periodo_texto = COALESCE(EXCLUDED.periodo_texto, editais.periodo_texto),
+      area_tematica = COALESCE(EXCLUDED.area_tematica, editais.area_tematica),
+      publico_alvo = COALESCE(EXCLUDED.publico_alvo, editais.publico_alvo),
+      ods_texto = COALESCE(EXCLUDED.ods_texto, editais.ods_texto),
+      whatsapp = COALESCE(EXCLUDED.whatsapp, editais.whatsapp),
+      site_oficial = COALESCE(EXCLUDED.site_oficial, editais.site_oficial),
+      link_pdf = COALESCE(EXCLUDED.link_pdf, editais.link_pdf)
+    RETURNING id
   `;
 
   const result = await pool.query(query, values);
+
+  // Persist attachments for newly inserted rows
+  const insertedIds = (result.rows ?? []).map((row) => row.id as string);
+  if (insertedIds.length) {
+    for (const item of items.filter((i) => i.arquivos && i.arquivos.length)) {
+      const match = insertedIds;
+      if (!match.length) continue;
+      // Simple mapping: attach to the first inserted id; conflicts updated, so re-insert guarded.
+      // Use a link match instead: find the id via link.
+      const linkResult = await pool.query("SELECT id FROM editais WHERE link_edital = $1", [item.link]);
+      if (!linkResult.rowCount) continue;
+      const editalId = linkResult.rows[0].id;
+      for (const a of item.arquivos ?? []) {
+        if (!a.url) continue;
+        await pool.query(
+          `INSERT INTO editais_arquivos (edital_id, tipo, url, titulo)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT DO NOTHING`,
+          [editalId, a.tipo || "pdf", a.url, a.titulo || null]
+        );
+      }
+    }
+  }
+
   return { inserted: result.rowCount ?? 0 };
 }

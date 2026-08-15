@@ -43,6 +43,15 @@
 
     .muted { color: #6b7280; }
 
+    .sources-list { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: #9ca3af; }
+    .source-tag { background: rgba(201,162,39,0.08); border: 1px solid #38321c; color: #eab308; border-radius: 5px; padding: 4px 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .file-list { display: grid; gap: 8px; }
+    .file-link { display: flex; align-items: center; gap: 10px; background: #0b0d10; border: 1px solid #1f242d; border-radius: 6px; padding: 10px 12px; color: #e5e7eb; text-decoration: none; font-size: 13px; transition: border-color .15s, background .15s; text-align: left; }
+    .file-link:hover { border-color: #eab308; background: rgba(201,162,39,0.06); }
+    .file-badge { flex: 0 0 auto; background: #dc2626; color: #fff; border-radius: 4px; font-size: 10px; font-weight: 700; padding: 2px 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .file-link span:nth-child(2) { line-height: 1.35; }
+    .meta-item div { font-weight: 500; color: #f3f4f6; }
+
     /* Modal Popup (Clean GSAP / Transition) */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; transition: opacity 0.2s ease; }
     .modal-overlay.active { display: flex; opacity: 1; }
@@ -74,6 +83,12 @@
     <h1>WebScrapper — Editais e Licitações</h1>
     <p class="subtitle">Monitoramento e consulta estruturada de oportunidades públicas e privadas.</p>
   </header>
+
+
+  <section class="panel">
+    <div class="panel-title">Fontes monitoradas</div>
+    <div class="sources-list" id="sourcesList"><span>Carregando fontes...</span></div>
+  </section>
 
 
   <section class="panel">
@@ -141,16 +156,49 @@
           <label>Identificador Único</label>
           <div id="modalId" style="font-family: monospace;">—</div>
         </div>
+        <div class="meta-item">
+          <label>Recursos / Valor</label>
+          <div id="modalValor">—</div>
+        </div>
+        <div class="meta-item">
+          <label>Período de Inscrição</label>
+          <div id="modalPeriodo">—</div>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <label>Áreas de Atuação</label>
+          <div id="modalAreas">—</div>
+        </div>
+        <div class="meta-item">
+          <label>Público-Alvo</label>
+          <div id="modalPublico">—</div>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <label>Objetivos de Desenvolvimento Sustentável (ODS)</label>
+          <div id="modalOds">—</div>
+        </div>
+        <div class="meta-item">
+          <label>WhatsApp / Suporte</label>
+          <div id="modalWhatsapp">—</div>
+        </div>
       </div>
       <div>
         <div class="modal-section-label">Descrição Completa e Escopo do Edital</div>
         <div id="modalDescricao" class="modal-text-box">Nenhuma descrição disponível.</div>
       </div>
+      <div>
+        <div class="modal-section-label">Arquivos e Documentos</div>
+        <div id="modalArquivos" class="file-list">
+          <span class="muted">Nenhum documento disponível.</span>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
-      <a id="modalExternalLink" class="btn-link" target="_blank" rel="noopener noreferrer">
-        Acessar edital no portal de origem
-      </a>
+      <a id="modalExternalLink" class="btn-link" target="_blank" rel="noopener noreferrer">Portal de origem</a>
+      <a id="modalSiteOficial" class="btn-link" target="_blank" rel="noopener noreferrer">Site oficial</a>
       <button id="modalDismissBtn" class="btn-search" style="height: 34px; padding: 0 16px; font-size: 13px;">Fechar</button>
     </div>
   </div>
@@ -188,16 +236,20 @@
 
   function renderSources(sources) {
     const select = $("fonte");
+    const current = select.value;
     select.replaceChildren(new Option("Todas as fontes", ""));
     const container = $("sourcesList");
     container.replaceChildren();
 
     for (const src of sources) {
       select.append(new Option(src.toUpperCase(), src));
-      const span = document.createElement("span");
-      span.innerHTML = `<strong>${src.toUpperCase()}</strong>`;
-      container.append(span);
+      const tag = document.createElement("span");
+      tag.className = "source-tag";
+      tag.textContent = src.toUpperCase();
+      container.append(tag);
     }
+    if (sources.includes(current)) select.value = current;
+    if (!container.childNodes.length) container.textContent = "Nenhuma fonte registrada.";
   }
 
   // Modal Control
@@ -217,21 +269,58 @@
     $("modalStatus").textContent = item.status || "Aberto";
     $("modalFechamento").textContent = formatDate(item.data_fechamento);
     $("modalId").textContent = item.id || "—";
+    $("modalValor").textContent = item.valor_texto || "—";
+    $("modalPeriodo").textContent = item.periodo_texto || "—";
+    $("modalAreas").textContent = item.area_tematica || "—";
+    $("modalPublico").textContent = item.publico_alvo || "—";
+    $("modalOds").textContent = item.ods_texto || "—";
+    $("modalWhatsapp").textContent = item.whatsapp || "—";
     $("modalDescricao").textContent = item.descricao || "Descrição não informada na fonte.";
 
     const extLink = $("modalExternalLink");
-    if (item.link_edital) {
-      extLink.href = item.link_edital;
-      extLink.style.display = "inline-flex";
-    } else {
-      extLink.style.display = "none";
-    }
+    extLink.href = item.link_edital || "#";
+    extLink.style.display = item.link_edital ? "inline-flex" : "none";
+    const siteLink = $("modalSiteOficial");
+    siteLink.href = item.site_oficial || "#";
+    siteLink.style.display = item.site_oficial ? "inline-flex" : "none";
 
     if (item.id) {
       try {
         const fullData = await request(`${API_BASE}/api/editais/${item.id}`);
         if (fullData.descricao) $("modalDescricao").textContent = fullData.descricao;
         if (fullData.data_fechamento) $("modalFechamento").textContent = formatDate(fullData.data_fechamento);
+        if (fullData.valor_texto) $("modalValor").textContent = fullData.valor_texto;
+        if (fullData.periodo_texto) $("modalPeriodo").textContent = fullData.periodo_texto;
+        if (fullData.area_tematica) $("modalAreas").textContent = fullData.area_tematica;
+        if (fullData.publico_alvo) $("modalPublico").textContent = fullData.publico_alvo;
+        if (fullData.ods_texto) $("modalOds").textContent = fullData.ods_texto;
+        if (fullData.whatsapp) $("modalWhatsapp").textContent = fullData.whatsapp;
+
+        const arquivos = Array.isArray(fullData.arquivos) ? fullData.arquivos : [];
+        const filesBox = $("modalArquivos");
+        filesBox.replaceChildren();
+        if (!arquivos.length) {
+          const span = document.createElement("span");
+          span.className = "muted";
+          span.textContent = "Nenhum documento disponível.";
+          filesBox.append(span);
+        } else {
+          for (const file of arquivos) {
+            if (!file.url) continue;
+            const a = document.createElement("a");
+            a.className = "file-link";
+            a.href = file.url;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            const badge = document.createElement("span");
+            badge.className = "file-badge";
+            badge.textContent = "pdf";
+            const label = document.createElement("span");
+            label.textContent = file.titulo || "Documento";
+            a.append(badge, label);
+            filesBox.append(a);
+          }
+        }
       } catch (e) {}
     }
 
@@ -319,6 +408,8 @@
 
   (async () => {
     try {
+      const srcRes = await request(`${API_BASE}/api/editais/sources`);
+      renderSources(srcRes.sources || []);
       renderTable({ total: 0, items: [] });
     } catch (e) {
       setStatus("Erro ao carregar fontes.", true);
