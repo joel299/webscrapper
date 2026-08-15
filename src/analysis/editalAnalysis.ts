@@ -51,7 +51,7 @@ export async function runAnalysis(analysisId: string) {
     const res = await fetch(`${env.LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: llmHeaders,
-      body: JSON.stringify({ model: env.LLM_MODEL, temperature: 0.1, messages: [{ role: "system", content: "Responda apenas JSON válido." }, { role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: env.LLM_MODEL, stream: false, temperature: 0.1, messages: [{ role: "system", content: "Responda apenas JSON válido." }, { role: "user", content: prompt }] }),
       signal: AbortSignal.timeout(120000)
     });
     if (!res.ok) throw new Error(`LLM HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
