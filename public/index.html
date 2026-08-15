@@ -361,7 +361,7 @@
     analysisOverlay.classList.add("active"); analysisOverlay.setAttribute("aria-hidden", "false");
     $("analysisTitle").textContent = `Análise: ${activeItem.titulo || "Edital"}`;
     $("analysisBody").innerHTML = `<div class="analysis-progress">Analisando edital, anexos e evidências. Esta janela será atualizada automaticamente.</div>`;
-    const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST" }).catch(e => ({ error: e.message }));
+    const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(e => ({ error: e.message }));
     if (started.error) { $("analysisStatus").textContent = started.error; return; }
     if (started.cached && started.resultado) { $("analysisStatus").textContent = "Análise reutilizada"; $("analysisBody").innerHTML = renderAnalysis(started.resultado); return; }
     $("analysisStatus").textContent = "Em processamento";
