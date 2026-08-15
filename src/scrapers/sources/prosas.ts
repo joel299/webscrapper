@@ -132,7 +132,9 @@ export async function prosasScraper() {
       let arquivosHospedados: ArquivoHospedado[] = [];
       if (arquivos.length) {
         try {
-          arquivosHospedados = await hospedarArquivos(context, arquivos, { Authorization: bearerToken });
+          // A sessão/cookies do context autenticam o download das URLs assinadas (S3/Oracle).
+          // Não injetar Authorization manual: quebra o request às URLs assinadas da Prosas.
+          arquivosHospedados = await hospedarArquivos(context, arquivos);
         } catch {
           arquivosHospedados = arquivos;
         }
