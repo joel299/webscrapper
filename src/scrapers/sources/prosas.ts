@@ -90,12 +90,29 @@ export async function prosasScraper() {
       const data_fechamento = attrs.encerramento_das_inscricoes || attrs.data_final_inscricoes || null;
       const status = attrs.prazo === "definido" ? "Aberto" : "Aberto";
 
-      // Build rich description snippet from list attributes
-      const empresa = attrs.nome_empresa ? `Patrocinador: ${attrs.nome_empresa}. ` : "";
-      const valor = attrs.valor_total_disponivel ? `Valor Total: R$ ${attrs.valor_total_disponivel}. ` : "";
-      const descText = stripHtml(attrs.descricao || "");
+      let detailAttrs: Record<string, any> = {};
+      let detailPdf: string | null = null;
+      if (bearerToken) {
+        const detailRes = await context.request.get(
+          `https://prosas.com.br/selecao/api/v2/third_party/oportunidades/${id}?include=area_interesses,incentivador,anexos,sites,locais,ods`,
+          { headers: { Authorization: bearerToken, Referer: "https://produtos.prosas.com.br/" } }
+        );
+        if (detailRes.ok()) {
+          const detailJson = await detailRes.json() as { data?: { attributes?: Record<string, any> }; included?: Array<{ type: string; attributes?: Record<string, any> }> };
+          detailAttrs = detailJson.data?.attributes ?? {};
+          const included = detailJson.included ?? [];
+          detailPdf = included
+            .filter((entry) => entry.type === "sites" || entry.type === "arquivo")
+            .map((entry) => entry.attributes?.link)
+            .find((link): link is string => typeof link === "string") ?? null;
+        }
+      }
+
+      const empresa = (detailAttrs.nome_empresa || attrs.nome_empresa) ? `Patrocinador: ${detailAttrs.nome_empresa || attrs.nome_empresa}. ` : "";
+      const valor = (detailAttrs.valor_total_disponivel || attrs.valor_total_disponivel) ? `Valor Total: R$ ${detailAttrs.valor_total_disponivel || attrs.valor_total_disponivel}. ` : "";
+      const descText = stripHtml(detailAttrs.descricao || attrs.descricao || "");
       const descricao = `${empresa}${valor}${descText}`.trim() || null;
-      const link_pdf = attrs.link && /\.pdf($|\?)/i.test(attrs.link) ? attrs.link : null;
+      const link_pdf = (detailAttrs.link && /\.pdf($|\?)/i.test(detailAttrs.link)) ? detailAttrs.link : detailPdf;
 
       mappedItems.push({
         titulo,

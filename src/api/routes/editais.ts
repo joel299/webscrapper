@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { listEditais, listEditalSources, getEditalById } from "../../db/repositories/editais.js";
 import { availableSources } from "../../scrapers/run.js";
+import { fetchEditalDetail } from "../../scrapers/detail.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -80,6 +81,18 @@ export async function editaisRoutes(app: FastifyInstance) {
     if (!edital) {
       reply.code(404);
       return { message: "Edital nao encontrado" };
+    }
+    if ((!edital.descricao || !edital.data_fechamento) && edital.link_edital) {
+      try {
+        const external = await fetchEditalDetail(edital.link_edital);
+        return {
+          ...edital,
+          descricao: edital.descricao || external.descricao || external.texto_completo,
+          data_fechamento: edital.data_fechamento
+        };
+      } catch {
+        return edital;
+      }
     }
     return edital;
   });

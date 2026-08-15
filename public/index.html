@@ -319,7 +319,7 @@
 
   (async () => {
     try {
-      await executeSearch();
+      renderTable({ total: 0, items: [] });
     } catch (e) {
       setStatus("Erro ao carregar fontes.", true);
     }
