@@ -27,7 +27,7 @@ export async function listEditais(filters: Record<string, unknown>) {
   const addFilter = (value: unknown, expression: string) => {
     if (typeof value !== "string" || !value.trim()) return;
     values.push(`%${value.trim()}%`);
-    conditions.push(expression.replace("$VALUE", `$${values.length}`));
+    conditions.push(expression.replaceAll("$VALUE", `$${values.length}`));
   };
 
   addFilter(filters.fonte, "fonte ILIKE $VALUE");
