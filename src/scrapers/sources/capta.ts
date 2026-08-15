@@ -30,6 +30,7 @@ function extractWhatsApp(text: string): string | null {
 }
 
 function extractOfficialLink(links: Array<{ href: string; text: string }>, fullText: string): string | null {
+  // Exclude links in sidebar widgets and navigation
   const external = links.filter(
     (l) =>
       l.href.startsWith("http") &&
@@ -42,11 +43,18 @@ function extractOfficialLink(links: Array<{ href: string; text: string }>, fullT
       !l.href.includes("wp-login") &&
       !l.href.includes("cookies") &&
       !l.href.includes("privacidade") &&
+      !l.href.includes("impactarte.org") && // sidebar recurring link
+      !l.href.includes("ispn.org.br") &&     // footer link
+      !l.href.includes("legislacao") &&
+      !l.text.includes("impactarte") &&
+      !l.text.includes("Política") &&
       l.href !== "https://capta.org.br/"
   );
   if (external.length === 0) return null;
+  // Prefer links that appear in the main body (not sidebar)
   for (let i = external.length - 1; i >= 0; i--) {
-    if (fullText.lastIndexOf(external[i].text) > fullText.length * 0.5) return external[i].href;
+    const pos = fullText.lastIndexOf(external[i].text);
+    if (pos > fullText.length * 0.4 && external[i].text.length > 10) return external[i].href;
   }
   return external[external.length - 1].href;
 }
