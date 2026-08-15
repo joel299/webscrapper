@@ -5,7 +5,17 @@ import type { EditalRow } from "../db/types.js";
 
 function clean(v: unknown): string {
   if (v === null || v === undefined) return "";
-  return String(v).replace(/\s+/g, " ").trim();
+  let s = v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+  // object Date serialized by pg
+  const m = s.match(/^(\w{3}) (\w{3}) (\d{1,2}) (\d{4})/);
+  if (m) {
+    const months: Record<string, string> = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+    s = `${m[4]}-${months[m[2]] || "01"}-${m[3].padStart(2, "0")}`;
+  }
+  // ISO datetime -> date only
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (iso) s = iso[1] + "-" + iso[2] + "-" + iso[3];
+  return s.replace(/\s+/g, " ").trim();
 }
 
 function bullets(items: Array<string | null | undefined>, limit = 40): string[] {
