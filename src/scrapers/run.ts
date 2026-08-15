@@ -2,12 +2,16 @@ import { prosasScraper } from "./sources/prosas.js";
 import { ligaCriativaScraper } from "./sources/ligacriativa.js";
 import { captaScraper } from "./sources/capta.js";
 import { pncpScraper } from "./sources/pncp.js";
+import { queridoDiarioScraper } from "./sources/queridodiario.js";
+import { comprasGovScraper } from "./sources/comprasgov.js";
 
 const scrapers = {
   capta: captaScraper,
   pncp: pncpScraper,
   prosas: prosasScraper,
-  ligacriativa: ligaCriativaScraper
+  ligacriativa: ligaCriativaScraper,
+  queridodiario: queridoDiarioScraper,
+  comprasgov: comprasGovScraper
 };
 
 export const availableSources = Object.keys(scrapers);

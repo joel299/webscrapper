@@ -51,6 +51,13 @@
     .file-badge { flex: 0 0 auto; background: #dc2626; color: #fff; border-radius: 4px; font-size: 10px; font-weight: 700; padding: 2px 6px; text-transform: uppercase; letter-spacing: .04em; }
     .file-link span:nth-child(2) { line-height: 1.35; }
     .meta-item div { font-weight: 500; color: #f3f4f6; }
+    .md-title { margin: 0 0 6px; color: #eab308; font-size: 15px; }
+    .md-sub { margin: 14px 0 6px; color: #c9a227; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+    .modal-text-box h3 { color: #eab308; }
+    .modal-text-box h4 { color: #c9a227; }
+    .modal-text-box ul { margin: 4px 0; padding-left: 18px; }
+    .modal-text-box li { margin: 3px 0; line-height: 1.5; }
+    .modal-text-box a { color: #eab308; }
 
     /* Modal Popup (Clean GSAP / Transition) */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; transition: opacity 0.2s ease; }
@@ -96,6 +103,11 @@
     <div class="search-grid">
       <label>Texto
         <input id="texto" maxlength="200" placeholder="Título ou palavra-chave">
+      </label>
+      <label>Busca pronta de tecnologia
+        <select id="modo">
+          <option value="">Busca livre</option>
+        </select>
       </label>
       <label>Fonte
         <select id="fonte"><option value="">Todas as fontes</option></select>
@@ -263,6 +275,37 @@
   $("modalDismissBtn").onclick = closeModal;
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) closeModal(); };
 
+  // Markdown → HTML seguro (escapa todo texto bruto antes de publicar)
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function inlineMd(line) {
+    return line
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+  function renderMd(text) {
+    const lines = String(text).split("\n");
+    const out = [];
+    let inList = false;
+    for (let line of lines) {
+      line = line.trimEnd();
+      const h1 = line.match(/^#\s+(.*)$/);
+      const h2 = line.match(/^##\s+(.*)$/);
+      const li = line.match(/^[-*]\s+(.*)$/);
+      if (!inList && li) { out.push("<ul>"); inList = true; }
+      if (inList && !li) { out.push("</ul>"); inList = false; }
+      if (li) { out.push("<li>" + inlineMd(esc(li[1])) + "</li>"); continue; }
+      if (h1) { out.push("<h3 class='md-title'>" + esc(h1[1]) + "</h3>"); continue; }
+      if (h2) { out.push("<h4 class='md-sub'>" + esc(h2[1]) + "</h4>"); continue; }
+      if (line.trim() === "") continue;
+      out.push("<p>" + inlineMd(esc(line)) + "</p>");
+    }
+    if (inList) out.push("</ul>");
+    return out.join("\n");
+  }
+
   async function openModal(item) {
     $("modalTitle").textContent = item.titulo || "Detalhes do Edital";
     $("modalFonte").textContent = (item.fonte || "—").toUpperCase();
@@ -287,7 +330,11 @@
     if (item.id) {
       try {
         const fullData = await request(`${API_BASE}/api/editais/${item.id}`);
-        if (fullData.descricao) $("modalDescricao").textContent = fullData.descricao;
+        if (fullData.texto_painel) {
+          $("modalDescricao").innerHTML = renderMd(fullData.texto_painel);
+        } else if (fullData.descricao) {
+          $("modalDescricao").textContent = fullData.descricao;
+        }
         if (fullData.data_fechamento) $("modalFechamento").textContent = formatDate(fullData.data_fechamento);
         if (fullData.valor_texto) $("modalValor").textContent = fullData.valor_texto;
         if (fullData.periodo_texto) $("modalPeriodo").textContent = fullData.periodo_texto;
@@ -295,6 +342,8 @@
         if (fullData.publico_alvo) $("modalPublico").textContent = fullData.publico_alvo;
         if (fullData.ods_texto) $("modalOds").textContent = fullData.ods_texto;
         if (fullData.whatsapp) $("modalWhatsapp").textContent = fullData.whatsapp;
+        if (fullData.site_oficial) { siteLink.href = fullData.site_oficial; siteLink.style.display = "inline-flex"; }
+        if (fullData.link_edital) { extLink.href = fullData.link_edital; extLink.style.display = "inline-flex"; }
 
         const arquivos = Array.isArray(fullData.arquivos) ? fullData.arquivos : [];
         const filesBox = $("modalArquivos");
@@ -389,6 +438,7 @@
       page: "1"
     });
     if ($("fonte").value) params.set("fonte", $("fonte").value);
+    if ($("modo").value) params.set("modo", $("modo").value);
     if ($("texto").value.trim()) params.set("texto", $("texto").value.trim());
     if ($("dataInicio").value) params.set("data_fechamento_inicio", $("dataInicio").value);
 
@@ -408,8 +458,15 @@
 
   (async () => {
     try {
-      const srcRes = await request(`${API_BASE}/api/editais/sources`);
+      const [srcRes, modosRes] = await Promise.all([
+        request(`${API_BASE}/api/editais/sources`),
+        request(`${API_BASE}/api/editais/modos`)
+      ]);
       renderSources(srcRes.sources || []);
+      const modoSelect = $("modo");
+      (modosRes.modos || []).forEach((m) => {
+        modoSelect.append(new Option(m.label, m.id));
+      });
       renderTable({ total: 0, items: [] });
     } catch (e) {
       setStatus("Erro ao carregar fontes.", true);

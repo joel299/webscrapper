@@ -1,4 +1,5 @@
 import { pool } from "../pool.js";
+import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
 
 export interface EditalRichItem {
   titulo: string;
@@ -17,6 +18,20 @@ export interface EditalRichItem {
   arquivos?: Array<{ tipo: string; url: string; titulo: string }>;
 }
 
+// Títulos/ruído de itens que não são editais/licitações reais
+const NON_EDITAL_TITLES = [
+  "acessar", "saiba mais", "leia mais", "veja mais", "contato", "cadastre-se",
+  "oportunidades", "portais e editais abertos", "oportunidades e editais", "início"
+];
+
+function tokenizeTexto(raw: unknown): string[] {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  return raw
+    .split(/\s+OR\s+|\s+\|\s+|\s*,\s*|\s+/i)
+    .map((t) => t.replace(/^[\("]+|[\("]+$/g, "").trim())
+    .filter((t) => t.length > 1);
+}
+
 export async function listEditais(filters: Record<string, unknown>) {
   const page = Number(filters.page ?? 1);
   const limit = Number(filters.limit ?? 20);
@@ -32,12 +47,43 @@ export async function listEditais(filters: Record<string, unknown>) {
 
   addFilter(filters.fonte, "fonte ILIKE $VALUE");
   addFilter(filters.status, "status ILIKE $VALUE");
-  addFilter(filters.texto, "(titulo ILIKE $VALUE OR descricao ILIKE $VALUE)");
+
+  // Fonte configurada por id de query pronta da planilha (?modo=software|ia|nuvem|...)
+  const modo = typeof filters.modo === "string" ? filters.modo : "";
+  if (modo) {
+    const q = TECHNOLOGY_QUERIES.find((q) => q.id === modo);
+    if (q && q.terms.length) {
+      const termSql: string[] = [];
+      for (const t of q.terms) {
+        values.push(`%${t}%`);
+        termSql.push(`(titulo ILIKE $${values.length} OR descricao ILIKE $${values.length} OR area_tematica ILIKE $${values.length})`);
+      }
+      conditions.push(`(${termSql.join(" OR ")})`);
+    }
+  } else if (typeof filters.texto === "string" && filters.texto.trim()) {
+    const terms = tokenizeTexto(filters.texto);
+    if (terms.length) {
+      const termSql: string[] = [];
+      for (const t of terms) {
+        values.push(`%${t}%`);
+        termSql.push(`(titulo ILIKE $${values.length} OR descricao ILIKE $${values.length} OR area_tematica ILIKE $${values.length} OR publico_alvo ILIKE $${values.length})`);
+      }
+      conditions.push(`(${termSql.join(" OR ")})`);
+    }
+  }
 
   if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) {
     values.push(filters.data_fechamento_inicio);
     conditions.push(`data_fechamento >= $${values.length}`);
   }
+
+  // Força retorno de licitações reais: exclui títulos genéricos/não-editais
+  const noise: string[] = [];
+  for (const t of NON_EDITAL_TITLES) {
+    values.push(`%${t}%`);
+    noise.push(`LOWER(titulo) LIKE $${values.length}`);
+  }
+  conditions.push(`NOT (${noise.join(" OR ")})`);
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const limitIndex = values.length + 1;

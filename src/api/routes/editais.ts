@@ -2,6 +2,8 @@ import { FastifyInstance } from "fastify";
 import { listEditais, listEditalSources, getEditalById } from "../../db/repositories/editais.js";
 import { availableSources } from "../../scrapers/run.js";
 import { fetchEditalDetail } from "../../scrapers/detail.js";
+import { formatEditalBody } from "../../utils/formatEdital.js";
+import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -18,6 +20,7 @@ export async function editaisRoutes(app: FastifyInstance) {
           data_fechamento_inicio: { type: "string", format: "date" },
           data_fechamento_fim: { type: "string", format: "date" },
           texto: { type: "string", maxLength: 200 },
+          modo: { type: "string", maxLength: 50 },
           page: { type: "integer", minimum: 1, maximum: 10_000, default: 1 },
           limit: { type: "integer", minimum: 1, maximum: 100, default: 20 }
         },
@@ -71,6 +74,33 @@ export async function editaisRoutes(app: FastifyInstance) {
     return { sources: [...new Set([...availableSources, ...storedSources])] };
   });
 
+  app.get("/modos", {
+    schema: {
+      summary: "Queries prontas de busca de tecnologia",
+      description: "Retorna os modos de busca prontos (booleans) da planilha Guia de Portais e APIs para Licitações de Tecnologia.",
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            modos: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  label: { type: "string" },
+                  terms: { type: "array", items: { type: "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async () => {
+    return { modos: TECHNOLOGY_QUERIES };
+  });
+
   app.get("/:id", {
     schema: {
       summary: "Leitura completa do edital",
@@ -84,7 +114,7 @@ export async function editaisRoutes(app: FastifyInstance) {
     }
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const edital = await getEditalById(id);
+    let edital = await getEditalById(id);
     if (!edital) {
       reply.code(404);
       return { message: "Edital nao encontrado" };
@@ -92,15 +122,17 @@ export async function editaisRoutes(app: FastifyInstance) {
     if ((!edital.descricao || !edital.data_fechamento) && edital.link_edital) {
       try {
         const external = await fetchEditalDetail(edital.link_edital);
-        return {
+        edital = {
           ...edital,
           descricao: edital.descricao || external.descricao || external.texto_completo,
           data_fechamento: edital.data_fechamento
         };
       } catch {
-        return edital;
+        // keep as-is
       }
     }
-    return edital;
+    // Texto estruturado no padrão do painel de edital (modelo anexado)
+    const texto_painel = formatEditalBody(edital);
+    return { ...edital, texto_painel };
   });
 }
