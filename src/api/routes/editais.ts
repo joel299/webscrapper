@@ -4,6 +4,8 @@ import { availableSources } from "../../scrapers/run.js";
 import { fetchEditalDetail } from "../../scrapers/detail.js";
 import { formatEditalBody } from "../../utils/formatEdital.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
+import { requestAnalysis, listAnalyses } from "../../analysis/editalAnalysis.js";
+import { enqueueAnalysis } from "../../workers/queue.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -100,6 +102,34 @@ export async function editaisRoutes(app: FastifyInstance) {
   }, async () => {
     return { modos: TECHNOLOGY_QUERIES };
   });
+
+  app.post("/:id(^[-a-fA-F0-9]{36}$)/analysis", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const { analysis, cached } = await requestAnalysis(id, "aderencia");
+      if (!cached) {
+        const job = await enqueueAnalysis(analysis.id);
+        return reply.code(202).send({ analysis_id: analysis.id, job_id: job.id, status: "queued", cached: false });
+      }
+      return { analysis_id: analysis.id, status: analysis.status, cached: true, resultado: analysis.resultado };
+    } catch (e: any) {
+      return reply.code(400).send({ message: e.message });
+    }
+  });
+
+  app.get("/:id(^[-a-fA-F0-9]{36}$)/analysis", async (request) => {
+    const { id } = request.params as { id: string };
+    return { analyses: await listAnalyses(id) };
+  });
+
+  app.get("/:id(^[-a-fA-F0-9]{36}$)/analysis/:analysisId", async (request, reply) => {
+    const { analysisId } = request.params as { analysisId: string };
+    const rows = await listAnalyses((request.params as { id: string }).id);
+    const analysis = rows.find((x) => x.id === analysisId);
+    if (!analysis) return reply.code(404).send({ message: "Análise não encontrada" });
+    return analysis;
+  });
+
 
   app.get("/:id(^[-a-fA-F0-9]{36}$)", {
     schema: {

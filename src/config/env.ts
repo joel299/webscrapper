@@ -22,7 +22,10 @@ const envSchema = z.object({
   PROSAS_PASS: z.string().default("Dj@7408-2012"),
   SUPABASE_URL: z.string().default("https://fsdszcfkjeavuoinyjas.supabase.co"),
   SUPABASE_ANON_KEY: z.string().default(""),
-  SUPABASE_BUCKET: z.string().default("edital")
+  SUPABASE_BUCKET: z.string().default("edital"),
+  LLM_BASE_URL: z.string().default("https://opencode.ai/zen/go/v1"),
+  LLM_API_KEY: z.string().default(""),
+  LLM_MODEL: z.string().default("glm-5")
 });
 
 export const env = envSchema.parse(process.env);

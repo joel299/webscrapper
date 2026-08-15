@@ -15,6 +15,14 @@ export async function enqueueScraperRun(fonte: string) {
   });
 }
 
+export async function enqueueAnalysis(analysisId: string) {
+  return scraperQueue.add("analysis", { analysisId }, { removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
+}
+
+export async function getAnalysisJobStatus(id: string) {
+  return getScraperJobStatus(id);
+}
+
 export async function getScraperJobStatus(id: string) {
   const job = await scraperQueue.getJob(id);
   if (!job) return null;

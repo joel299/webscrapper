@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { env } from "../config/env.js";
 import { runScrapers } from "../scrapers/run.js";
+import { runAnalysis } from "../analysis/editalAnalysis.js";
 import { runCleanup } from "./cleanup.js";
 import { scraperQueue } from "./queue.js";
 
@@ -15,6 +16,8 @@ new Worker(
       await runScrapers(job.data.fonte);
     } else if (job.name === "cleanup") {
       await runCleanup();
+    } else if (job.name === "analysis") {
+      await runAnalysis(job.data.analysisId);
     }
   },
   {

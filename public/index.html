@@ -19,7 +19,9 @@
 
 
     /* Search Grid */
-    .search-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 100px 132px; gap: 12px; align-items: end; }
+    .search-grid { display: grid; grid-template-columns: minmax(180px, 1.15fr) minmax(190px, 1.2fr) minmax(150px, 1fr) 155px 90px 140px; gap: 12px; align-items: end; }
+    .search-grid > label { min-width: 0; }
+    .search-grid > .btn-search { width: 100%; }
     label { display: grid; gap: 6px; color: #9ca3af; font-size: 13px; font-weight: 500; }
     input, select { background: #0b0d10; color: #ffffff; border-radius: 6px; border: 1px solid #282f3c; padding: 9px 12px; font: inherit; font-size: 14px; box-sizing: border-box; width: 100%; }
     input:focus, select:focus { outline: none; border-color: #c9a227; }
@@ -67,6 +69,16 @@
 
     .modal-header { padding: 20px 24px; border-bottom: 1px solid #1f242d; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; background: #0e1015; }
     .modal-title { font-size: 17px; font-weight: 700; color: #ffffff; margin: 0 0 6px; line-height: 1.4; }
+    .btn-analyze { margin-left: auto; height: 34px; padding: 0 14px; border: 1px solid #c9a227; border-radius: 5px; background: rgba(201,162,39,.12); color: #eab308; font-weight: 700; cursor: pointer; }
+    .btn-analyze:hover { background: #c9a227; color: #101114; }
+    .analysis-card { max-width: 900px; }
+    .analysis-body { line-height: 1.55; }
+    .analysis-section { border-bottom: 1px solid #252a32; padding: 14px 0; }
+    .analysis-section h3 { color: #eab308; font-size: 14px; margin: 0 0 8px; }
+    .analysis-section ul { margin: 0; padding-left: 20px; }
+    .analysis-section li { margin: 5px 0; }
+    .analysis-progress { color: #c9a227; padding: 24px 0; }
+    .analysis-muted { color: #9ca3af; }
     .modal-sub { font-size: 12px; color: #9ca3af; display: flex; gap: 12px; }
     .btn-close { background: transparent; border: none; color: #6b7280; font-size: 18px; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 4px; }
     .btn-close:hover { color: #ffffff; background: #1f242d; }
@@ -91,11 +103,6 @@
     <p class="subtitle">Monitoramento e consulta estruturada de oportunidades públicas e privadas.</p>
   </header>
 
-
-  <section class="panel">
-    <div class="panel-title">Fontes monitoradas</div>
-    <div class="sources-list" id="sourcesList"><span>Carregando fontes...</span></div>
-  </section>
 
 
   <section class="panel">
@@ -156,6 +163,7 @@
           <span>Status: <strong id="modalStatus" style="color:#34d399"></strong></span>
         </div>
       </div>
+      <button id="analyzeBtn" class="btn-analyze" type="button">Analisar com IA</button>
       <button id="modalCloseBtn" class="btn-close" aria-label="Fechar modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     </div>
     <div class="modal-body">
@@ -216,6 +224,16 @@
   </div>
 </div>
 
+<div id="analysisOverlay" class="modal-overlay" aria-hidden="true">
+  <div class="modal-card analysis-card" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
+    <div class="modal-header">
+      <div><h2 id="analysisTitle" class="modal-title">Análise do edital</h2><div id="analysisStatus" class="modal-sub">Preparando análise...</div></div>
+      <button id="analysisCloseBtn" class="btn-close" aria-label="Fechar análise">×</button>
+    </div>
+    <div id="analysisBody" class="modal-body analysis-body"></div>
+  </div>
+</div>
+
 <script>
   const API_BASE = location.pathname.startsWith("/webscrapper") ? "/webscrapper" : "";
   const $ = (id) => document.getElementById(id);
@@ -232,8 +250,8 @@
     $("statusMessage").style.color = err ? "#f87171" : "#c9a227";
   };
 
-  const request = async (url) => {
-    const res = await fetch(url);
+  const request = async (url, options = {}) => {
+    const res = await fetch(url, options);
     if (!res.ok) throw new Error(`Erro de conexão (${res.status})`);
     return res.json();
   };
@@ -316,6 +334,48 @@
 
   // Modal Control
   const modalOverlay = $("modalOverlay");
+  const analysisOverlay = $("analysisOverlay");
+  let activeItem = null;
+  function closeAnalysis() { analysisOverlay.classList.remove("active"); analysisOverlay.setAttribute("aria-hidden", "true"); }
+  $("analysisCloseBtn").onclick = closeAnalysis;
+  analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
+  function analysisList(title, values) {
+    if (!Array.isArray(values) || !values.length) return "";
+    return `<section class="analysis-section"><h3>${esc(title)}</h3><ul>${values.map(v => `<li>${esc(typeof v === "string" ? v : v.nome || v.requisito || v.criterio || JSON.stringify(v))}</li>`).join("")}</ul></section>`;
+  }
+  function renderAnalysis(result) {
+    const r = result || {};
+    const base = r.base_projeto_sugerida || {};
+    return [
+      r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3><p>${esc(typeof r.resumo === "string" ? r.resumo : JSON.stringify(r.resumo))}</p></section>` : "",
+      analysisList("Requisitos obrigatórios", r.requisitos_obrigatorios),
+      analysisList("Documentos necessários", r.documentos_necessarios),
+      analysisList("Critérios de avaliação", r.criterios_avaliacao),
+      analysisList("Pontos de atenção", r.pontos_atencao),
+      Object.keys(base).length ? `<section class="analysis-section"><h3>Base de projeto sugerida</h3><p>${esc(JSON.stringify(base, null, 2))}</p></section>` : "",
+      analysisList("Checklist", r.checklist)
+    ].join("") || `<p class="analysis-muted">A análise não retornou dados estruturados.</p>`;
+  }
+  async function requestAnalysis() {
+    if (!activeItem?.id) return;
+    analysisOverlay.classList.add("active"); analysisOverlay.setAttribute("aria-hidden", "false");
+    $("analysisTitle").textContent = `Análise: ${activeItem.titulo || "Edital"}`;
+    $("analysisBody").innerHTML = `<div class="analysis-progress">Analisando edital, anexos e evidências. Esta janela será atualizada automaticamente.</div>`;
+    const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST" }).catch(e => ({ error: e.message }));
+    if (started.error) { $("analysisStatus").textContent = started.error; return; }
+    if (started.cached && started.resultado) { $("analysisStatus").textContent = "Análise reutilizada"; $("analysisBody").innerHTML = renderAnalysis(started.resultado); return; }
+    $("analysisStatus").textContent = "Em processamento";
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries++;
+      const data = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis/${started.analysis_id}`).catch(() => null);
+      if (!data) return;
+      if (data.status === "completed") { clearInterval(timer); $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = renderAnalysis(data.resultado); }
+      else if (data.status === "failed") { clearInterval(timer); $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
+      if (tries > 120) { clearInterval(timer); $("analysisStatus").textContent = "Processamento em segundo plano"; }
+    }, 2500);
+  }
+  $("analyzeBtn").onclick = requestAnalysis;
   function closeModal() {
     modalOverlay.classList.remove("active");
     modalOverlay.setAttribute("aria-hidden", "true");
@@ -364,6 +424,7 @@
   }
 
   async function openModal(item) {
+    activeItem = item;
     $("modalTitle").textContent = item.titulo || "Detalhes do Edital";
     $("modalFonte").textContent = (item.fonte || "—").toUpperCase();
     $("modalStatus").textContent = item.status || "Aberto";
@@ -488,6 +549,14 @@
     }
   }
 
+  function queueVisibleAnalyses(items) {
+    if (!Array.isArray(items)) return;
+    // Dispara em segundo plano; a busca e a tabela não aguardam a LLM.
+    items.slice(0, 20).forEach((item) => {
+      if (item?.id) fetch(`${API_BASE}/api/editais/${item.id}/analysis`, { method: "POST" }).catch(() => {});
+    });
+  }
+
   async function executeSearch() {
     setStatus("Buscando editais...");
     const params = new URLSearchParams({
@@ -502,6 +571,7 @@
     try {
       const res = await request(`${API_BASE}/api/editais/?${params.toString()}`);
       renderTable(res);
+      queueVisibleAnalyses(res.items);
       setStatus("");
     } catch (e) {
       setStatus(e.message, true);
