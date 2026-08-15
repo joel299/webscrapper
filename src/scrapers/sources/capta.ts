@@ -134,11 +134,19 @@ export async function captaScraper() {
               const detail = await page.evaluate(() => {
                 const body = document.body.innerText;
                 const title = document.title.replace(/ » Capta$/, "").trim();
-                const allLinks = Array.from(document.querySelectorAll("a"))
-                  .filter((a: HTMLAnchorElement) => a.href && !a.href.startsWith("javascript") && !a.href.includes("/wp-content/"))
-                  .map((a: HTMLAnchorElement) => ({ href: a.href, text: a.textContent.replace(/\s+/g, " ").trim() }));
-                const mainEl = document.querySelector("main, article, .post, [role='main'], #primary, .content-area") || document.body;
-                const mainText = mainEl.textContent?.replace(/\s+/g, " ").trim() ?? body.replace(/\s+/g, " ").trim();
+                // Only collect links from the main content area, NOT from sidebar/widgets
+                const mainContent = document.querySelector("main, article, .post, [role='main'], #primary, .content-area") || document.body;
+                const sidebar = document.querySelector("aside, #secondary, .widget-area, .sidebar, [role='complementary']");
+                const allLinks: Array<{ href: string; text: string }> = [];
+                mainContent.querySelectorAll("a").forEach((a: HTMLAnchorElement) => {
+                  if (!a.href || a.href.startsWith("javascript") || a.href.includes("/wp-content/")) return;
+                  // Skip links inside sidebar/widgets
+                  if (sidebar && sidebar.contains(a)) return;
+                  // Skip navigation/structure links
+                  if (a.closest("nav, header, footer, .menu, .navbar, .widget")) return;
+                  allLinks.push({ href: a.href, text: a.textContent.replace(/\s+/g, " ").trim() });
+                });
+                const mainText = mainContent.textContent?.replace(/\s+/g, " ").trim() ?? body.replace(/\s+/g, " ").trim();
                 return { title, body: body.replace(/\s+/g, " ").trim(), mainText, allLinks };
               });
 
