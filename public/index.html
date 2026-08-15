@@ -583,6 +583,19 @@
     if (e.key === "Escape" && modalOverlay.classList.contains("active")) closeModal();
   });
 
+  function populateModes(modos) {
+    const modoSelect = $("modo");
+    modoSelect.replaceChildren(new Option("Busca livre", ""));
+    const fallback = [
+      ["software", "Fábrica e Desenvolvimento de Software"], ["ia", "Inteligência Artificial e Chatbots"],
+      ["nuvem", "Computação em Nuvem e Infraestrutura"], ["dados", "Projetos de Dados e BI"],
+      ["ciberseguranca", "Cibersegurança e Proteção de Dados"], ["ust", "Contratos por UST ou Pontos de Função"],
+      ["consultoria", "Consultoria e Governança de TI"], ["hardware", "Hardware e Licenciamento"]
+    ];
+    const list = Array.isArray(modos) && modos.length ? modos.map(m => [m.id, m.label]) : fallback;
+    list.forEach(([id, label]) => modoSelect.append(new Option(label, id)));
+  }
+
   (async () => {
     try {
       const [srcRes, modosRes] = await Promise.all([
@@ -590,13 +603,12 @@
         request(`${API_BASE}/api/editais/modos`)
       ]);
       renderSources(srcRes.sources || []);
-      const modoSelect = $("modo");
-      (modosRes.modos || []).forEach((m) => {
-        modoSelect.append(new Option(m.label, m.id));
-      });
+      populateModes(modosRes.modos || []);
       renderTable({ total: 0, items: [] });
     } catch (e) {
-      setStatus("Erro ao carregar fontes.", true);
+      populateModes([]);
+      renderTable({ total: 0, items: [] });
+      setStatus("Busca pronta carregada localmente. Execute a busca.", false);
     }
   })();
 </script>

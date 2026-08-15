@@ -23,9 +23,9 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().default("https://fsdszcfkjeavuoinyjas.supabase.co"),
   SUPABASE_ANON_KEY: z.string().default(""),
   SUPABASE_BUCKET: z.string().default("edital"),
-  LLM_BASE_URL: z.string().default("https://opencode.ai/zen/go/v1"),
+  LLM_BASE_URL: z.string().default("http://omniroute_omniroute:20128/v1"),
   LLM_API_KEY: z.string().default(""),
-  LLM_MODEL: z.string().default("glm-5")
+  LLM_MODEL: z.string().default("auto/best-reasoning")
 });
 
 export const env = envSchema.parse(process.env);

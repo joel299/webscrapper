@@ -46,10 +46,11 @@ export async function runAnalysis(analysisId: string) {
   });
   const prompt = `Você é um analista de editais. Analise SOMENTE os dados fornecidos. Não invente requisitos. Quando não houver evidência, use "Não identificado". Retorne JSON válido com: resumo, requisitos_obrigatorios[], documentos_necessarios[], criterios_avaliacao[], pontos_atencao[], base_projeto_sugerida{problema,objetivo,publico,metodologia,indicadores}, checklist[]. Cada requisito deve ter evidencia e fonte.\n\nEDITAL:\n${source}`;
   try {
-    if (!env.LLM_API_KEY) throw new Error("LLM_API_KEY não configurada");
+    const llmHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (env.LLM_API_KEY) llmHeaders.Authorization = `Bearer ${env.LLM_API_KEY}`;
     const res = await fetch(`${env.LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${env.LLM_API_KEY}`, "Content-Type": "application/json" },
+      headers: llmHeaders,
       body: JSON.stringify({ model: env.LLM_MODEL, temperature: 0.1, messages: [{ role: "system", content: "Responda apenas JSON válido." }, { role: "user", content: prompt }] }),
       signal: AbortSignal.timeout(120000)
     });
