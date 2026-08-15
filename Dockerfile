@@ -7,6 +7,9 @@ ENV PLAYWRIGHT_BROWSERS_PATH=0
 RUN npm install
 RUN npx playwright install --with-deps chromium
 
+ARG BUILD_DATE=unknown
+ENV BUILD_DATE=${BUILD_DATE}
+
 COPY tsconfig.json ./
 COPY src ./src
 COPY public ./public
