@@ -6,90 +6,108 @@
   <title>WebScrapper — Editais e Licitações</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: #101114; color: #f3f4f6; line-height: 1.5; }
+    body { margin: 0; background: #0b0d10; color: #e5e7eb; line-height: 1.5; }
     main { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
-    h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; color: #ffffff; }
-    p.subtitle { color: #aeb4c0; margin: 0 0 24px; font-size: 14px; }
-    .card { background: #191b21; border: 1px solid #2b2f38; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .card-header { font-weight: 600; font-size: 15px; color: #f3f4f6; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-    .grid { display: grid; grid-template-columns: 1.2fr 1fr 1.5fr 100px; gap: 12px; }
-    label { display: grid; gap: 6px; color: #aeb4c0; font-size: 13px; font-weight: 500; }
-    input, select, button { border-radius: 8px; border: 1px solid #3b414d; padding: 10px 12px; font: inherit; box-sizing: border-box; }
-    input, select { background: #101114; color: #fff; }
+
+    .header { margin-bottom: 24px; }
+    h1 { margin: 0 0 6px; font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
+    p.subtitle { color: #9ca3af; margin: 0; font-size: 14px; }
+
+    /* Clean Section Panel (No heavy cards) */
+    .panel { background: #12151b; border: 1px solid #1f242d; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .panel-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #c9a227; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+
+    .sources-list { font-size: 13px; color: #9ca3af; display: flex; gap: 16px; flex-wrap: wrap; }
+    .sources-list strong { color: #d1d5db; font-weight: 500; }
+
+    /* Search Grid */
+    .search-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr 120px; gap: 12px; align-items: end; }
+    label { display: grid; gap: 6px; color: #9ca3af; font-size: 13px; font-weight: 500; }
+    input, select { background: #0b0d10; color: #ffffff; border-radius: 6px; border: 1px solid #282f3c; padding: 9px 12px; font: inherit; font-size: 14px; box-sizing: border-box; width: 100%; }
     input:focus, select:focus { outline: none; border-color: #c9a227; }
-    .btn-primary { background: #c9a227; color: #161616; border-color: #c9a227; cursor: pointer; font-weight: 700; transition: background 0.2s; }
-    .btn-primary:hover { background: #dcb332; }
-    .btn-secondary { background: #2b2f38; color: #f3f4f6; border-color: #3b414d; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
-    .btn-secondary:hover { background: #383d49; }
-    .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 6px; }
-    .actions { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
-    .status-msg { min-height: 22px; color: #c9a227; font-size: 13px; }
-    .auto-info { color: #8b93a1; font-size: 13px; }
-    .sources { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .source-badge { border: 1px solid #3b414d; border-radius: 999px; color: #c9a227; padding: 4px 12px; font-size: 12px; font-weight: 600; background: rgba(201,162,39,0.08); }
-    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #252a34; color: #8ab4f8; border: 1px solid #353c4a; }
-    .status-badge.aberto { background: rgba(52,199,89,0.15); color: #4ade80; border-color: rgba(52,199,89,0.3); }
-    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
-    th, td { border-bottom: 1px solid #2b2f38; padding: 12px 10px; text-align: left; vertical-align: middle; }
-    th { color: #8b93a1; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
-    td.title-cell { font-weight: 600; color: #f3f4f6; max-width: 420px; word-break: break-word; }
-    .muted { color: #8b93a1; }
 
-    /* Modal Styles */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-    .modal-overlay.active { display: flex; }
-    .modal-content { background: #191b21; border: 1px solid #3b414d; border-radius: 14px; max-width: 760px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.5); overflow: hidden; animation: modalIn 0.2s ease-out; }
-    @keyframes modalIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-    .modal-header { padding: 20px 24px; border-bottom: 1px solid #2b2f38; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; background: #14161b; }
-    .modal-title { font-size: 18px; font-weight: 700; color: #fff; margin: 0 0 8px; line-height: 1.4; }
-    .modal-close { background: transparent; border: none; color: #8b93a1; font-size: 24px; cursor: pointer; padding: 0 4px; line-height: 1; border-radius: 4px; }
-    .modal-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
-    .modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 16px; font-size: 14px; color: #d1d5db; }
-    .modal-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #8b93a1; background: #101114; padding: 12px 16px; border-radius: 8px; border: 1px solid #232730; }
-    .modal-meta div { display: flex; gap: 6px; align-items: center; }
-    .modal-section-title { font-size: 14px; font-weight: 600; color: #c9a227; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-    .modal-text { white-space: pre-wrap; line-height: 1.6; background: #101114; padding: 16px; border-radius: 8px; border: 1px solid #232730; max-height: 280px; overflow-y: auto; color: #e5e7eb; }
-    .modal-footer { padding: 16px 24px; border-top: 1px solid #2b2f38; display: flex; justify-content: space-between; align-items: center; background: #14161b; gap: 12px; }
+    .btn-search { background: #c9a227; color: #0b0d10; border: none; border-radius: 6px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s ease; height: 40px; }
+    .btn-search:hover { background: #d9b132; }
 
-    @media (max-width: 760px) { .grid { grid-template-columns: 1fr 1fr; } table { display: block; overflow-x: auto; } }
+    .btn-link { background: transparent; color: #c9a227; border: 1px solid #38321c; border-radius: 4px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.15s ease; }
+    .btn-link:hover { background: rgba(201, 162, 39, 0.1); border-color: #c9a227; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+    th, td { border-bottom: 1px solid #1f242d; padding: 14px 12px; text-align: left; vertical-align: middle; }
+    th { color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; background: #0e1015; }
+    tr:hover td { background: rgba(255, 255, 255, 0.015); }
+    td.title-cell { font-weight: 600; color: #f3f4f6; max-width: 460px; word-break: break-word; }
+
+    .tag-source { font-size: 12px; font-weight: 600; color: #9ca3af; text-transform: uppercase; }
+    .tag-status { font-size: 12px; font-weight: 600; color: #34d399; }
+    .tag-status.encerrado { color: #f87171; }
+
+    .muted { color: #6b7280; }
+
+    /* Modal Popup (Clean GSAP / Transition) */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; opacity: 0; transition: opacity 0.2s ease; }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .modal-card { background: #12151b; border: 1px solid #282f3c; border-radius: 10px; max-width: 780px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); transform: scale(0.96); transition: transform 0.2s ease; overflow: hidden; }
+    .modal-overlay.active .modal-card { transform: scale(1); }
+
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid #1f242d; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; background: #0e1015; }
+    .modal-title { font-size: 17px; font-weight: 700; color: #ffffff; margin: 0 0 6px; line-height: 1.4; }
+    .modal-sub { font-size: 12px; color: #9ca3af; display: flex; gap: 12px; }
+    .btn-close { background: transparent; border: none; color: #6b7280; font-size: 18px; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 4px; }
+    .btn-close:hover { color: #ffffff; background: #1f242d; }
+
+    .modal-body { padding: 24px; overflow-y: auto; display: grid; gap: 20px; font-size: 14px; color: #d1d5db; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #0b0d10; padding: 14px 16px; border-radius: 6px; border: 1px solid #1f242d; font-size: 13px; }
+    .meta-item label { font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.05em; margin: 0; }
+    .meta-item div { font-weight: 600; color: #f3f4f6; margin-top: 2px; }
+
+    .modal-section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #c9a227; margin-bottom: 8px; }
+    .modal-text-box { background: #0b0d10; border: 1px solid #1f242d; border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6; max-height: 240px; overflow-y: auto; white-space: pre-wrap; color: #e5e7eb; }
+
+    .modal-footer { padding: 16px 24px; border-top: 1px solid #1f242d; display: flex; justify-content: space-between; align-items: center; background: #0e1015; }
+
+    @media (max-width: 840px) { .search-grid { grid-template-columns: 1fr 1fr; } table { display: block; overflow-x: auto; } }
   </style>
 </head>
 <body>
 <main>
-  <h1>WebScrapper — Editais e Licitações</h1>
-  <p class="subtitle">Central automatizada de monitoramento e consulta de oportunidades públicas.</p>
+  <header class="header">
+    <h1>WebScrapper — Editais e Licitações</h1>
+    <p class="subtitle">Monitoramento e consulta estruturada de oportunidades públicas e privadas.</p>
+  </header>
 
-  <section class="card">
-    <div class="card-header">
-      <span>Fontes Monitoradas Automática</span>
-      <span id="lastUpdate" class="auto-info"></span>
-    </div>
-    <div id="sources" class="sources"><span class="muted">Carregando fontes...</span></div>
-    <div class="actions">
-      <span class="auto-info">O sistema varre e atualiza todas as fontes ativas automaticamente a cada 15 minutos.</span>
+  <section class="panel">
+    <div class="panel-title">Fontes Integradas</div>
+    <div class="sources-list" id="sourcesList">
+      <span>Carregando fontes...</span>
     </div>
   </section>
 
-  <section class="card">
-    <div class="card-header">
-      <span>Filtros de Pesquisa</span>
+  <section class="panel">
+    <div class="panel-title">Filtros de Pesquisa</div>
+    <div class="search-grid">
+      <label>Texto
+        <input id="texto" maxlength="200" placeholder="Título ou palavra-chave">
+      </label>
+      <label>Fonte
+        <select id="fonte"><option value="">Todas as fontes</option></select>
+      </label>
+      <label>Data Mínima de Fechamento
+        <input id="dataInicio" type="date" min="2026-08-14" value="2026-08-14">
+      </label>
+      <label>Limite
+        <input id="limit" type="number" min="1" max="100" value="20">
+      </label>
+      <button id="searchBtn" class="btn-search">Buscar editais</button>
     </div>
-    <div class="grid">
-      <label>Fonte <select id="fonte"><option value="">Todas as fontes</option></select></label>
-      <label>Status <input id="status" maxlength="50" placeholder="Ex: Aberto"></label>
-      <label>Texto <input id="texto" maxlength="200" placeholder="Buscar por palavra-chave"></label>
-      <label>Limite <input id="limit" type="number" min="1" max="100" value="20"></label>
-    </div>
-    <div class="actions">
-      <button id="search" class="btn-primary">Atualizar resultados</button>
-      <span id="statusMessage" class="status-msg" role="status"></span>
-    </div>
+    <div id="statusMessage" style="margin-top: 10px; font-size: 13px; color: #c9a227; min-height: 18px;"></div>
   </section>
 
-  <section class="card">
-    <div class="card-header">
-      <span>Resultados <span id="total" class="muted"></span></span>
+  <section class="panel">
+    <div class="panel-title">
+      <span>Resultados Encontrados</span>
+      <span id="totalCount" style="color: #9ca3af; font-weight: 500;">(0)</span>
     </div>
     <table>
       <thead>
@@ -98,11 +116,11 @@
           <th>Fonte</th>
           <th>Status</th>
           <th>Fechamento</th>
-          <th style="width: 120px; text-align: right;">Detalhes</th>
+          <th style="width: 110px; text-align: right;">Ação</th>
         </tr>
       </thead>
-      <tbody id="results">
-        <tr><td colspan="5" class="muted" style="text-align:center; padding: 24px;">Carregando editais...</td></tr>
+      <tbody id="resultsTable">
+        <tr><td colspan="5" class="muted" style="text-align:center; padding: 30px;">Clique em "Buscar editais" para carregar as oportunidades.</td></tr>
       </tbody>
     </table>
   </section>
@@ -110,37 +128,38 @@
 
 <!-- Modal de Detalhes -->
 <div id="modalOverlay" class="modal-overlay" aria-hidden="true">
-  <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-header">
       <div>
-        <div id="modalBadges" style="margin-bottom: 6px; display: flex; gap: 8px;"></div>
         <h2 id="modalTitle" class="modal-title"></h2>
+        <div class="modal-sub">
+          <span>Fonte: <strong id="modalFonte" style="color:#fff"></strong></span>
+          <span>Status: <strong id="modalStatus" style="color:#34d399"></strong></span>
+        </div>
       </div>
-      <button id="modalClose" class="modal-close" aria-label="Fechar">✕</button>
+      <button id="modalCloseBtn" class="btn-close" aria-label="Fechar modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     </div>
     <div class="modal-body">
-      <div class="modal-meta">
-        <div><strong style="color:#fff">Fechamento:</strong> <span id="modalFechamento">—</span></div>
-        <div><strong style="color:#fff">ID:</strong> <span id="modalId" style="font-family: monospace;">—</span></div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <label>Data de Fechamento</label>
+          <div id="modalFechamento">—</div>
+        </div>
+        <div class="meta-item">
+          <label>Identificador Único</label>
+          <div id="modalId" style="font-family: monospace;">—</div>
+        </div>
       </div>
       <div>
-        <div class="modal-section-title">Descrição / Resumo do Edital</div>
-        <div id="modalDescricao" class="modal-text">Nenhuma descrição disponível.</div>
-      </div>
-      <div id="modalContatosSection" style="display:none;">
-        <div class="modal-section-title">Contatos Extraídos</div>
-        <div id="modalContatos" class="modal-meta"></div>
-      </div>
-      <div id="modalArquivosSection" style="display:none;">
-        <div class="modal-section-title">Arquivos e Documentos</div>
-        <div id="modalArquivos"></div>
+        <div class="modal-section-label">Descrição Completa e Escopo do Edital</div>
+        <div id="modalDescricao" class="modal-text-box">Nenhuma descrição disponível.</div>
       </div>
     </div>
     <div class="modal-footer">
-      <a id="modalExternalLink" class="btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">
-        🌐 Portal de Origem ↗
+      <a id="modalExternalLink" class="btn-link" target="_blank" rel="noopener noreferrer">
+        Acessar edital no portal de origem
       </a>
-      <button id="modalCloseBtn" class="btn-primary btn-sm">Fechar</button>
+      <button id="modalDismissBtn" class="btn-search" style="height: 34px; padding: 0 16px; font-size: 13px;">Fechar</button>
     </div>
   </div>
 </div>
@@ -149,28 +168,23 @@
   const API_BASE = location.pathname.startsWith("/webscrapper") ? "/webscrapper" : "";
   const $ = (id) => document.getElementById(id);
 
-  const statusMessage = (text, error = false) => {
-    $("statusMessage").textContent = text;
-    $("statusMessage").style.color = error ? "#f87171" : "#c9a227";
-  };
-
-  const request = async (path, options = {}) => {
-    const response = await fetch(path, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data?.message || data?.error?.message || `HTTP ${response.status}`);
-    return data;
-  };
-
-  const query = () => {
-    const params = new URLSearchParams({ limit: $("limit").value || "20", page: "1" });
-    for (const id of ["fonte", "status", "texto"]) if ($(id).value.trim()) params.set(id, $(id).value.trim());
-    return params;
-  };
-
-  function formatSource(source) {
-    if (!source) return "—";
-    return source.toUpperCase().replaceAll("_", " ");
+  // Set default date input min to today
+  const todayIso = new Date().toISOString().split("T")[0];
+  if ($("dataInicio")) {
+    $("dataInicio").min = todayIso;
+    $("dataInicio").value = todayIso;
   }
+
+  const setStatus = (msg, err = false) => {
+    $("statusMessage").textContent = msg;
+    $("statusMessage").style.color = err ? "#f87171" : "#c9a227";
+  };
+
+  const request = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Erro de conexão (${res.status})`);
+    return res.json();
+  };
 
   function formatDate(raw) {
     if (!raw) return "—";
@@ -183,15 +197,15 @@
   function renderSources(sources) {
     const select = $("fonte");
     select.replaceChildren(new Option("Todas as fontes", ""));
-    $("sources").replaceChildren();
-    for (const source of sources) {
-      select.append(new Option(formatSource(source), source));
-      const badge = document.createElement("span");
-      badge.className = "source-badge";
-      badge.textContent = formatSource(source);
-      $("sources").append(badge);
+    const container = $("sourcesList");
+    container.replaceChildren();
+
+    for (const src of sources) {
+      select.append(new Option(src.toUpperCase(), src));
+      const span = document.createElement("span");
+      span.innerHTML = `<strong>${src.toUpperCase()}</strong>`;
+      container.append(span);
     }
-    if (!sources.length) $("sources").textContent = "Nenhuma fonte registrada.";
   }
 
   // Modal Control
@@ -200,33 +214,19 @@
     modalOverlay.classList.remove("active");
     modalOverlay.setAttribute("aria-hidden", "true");
   }
-  $("modalClose").onclick = closeModal;
+
   $("modalCloseBtn").onclick = closeModal;
+  $("modalDismissBtn").onclick = closeModal;
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) closeModal(); };
 
-  async function openDetailModal(item) {
-    $("modalTitle").textContent = item.titulo || "Detalhes da Licitação";
-    $("modalId").textContent = item.id || "—";
+  async function openModal(item) {
+    $("modalTitle").textContent = item.titulo || "Detalhes do Edital";
+    $("modalFonte").textContent = (item.fonte || "—").toUpperCase();
+    $("modalStatus").textContent = item.status || "Aberto";
     $("modalFechamento").textContent = formatDate(item.data_fechamento);
+    $("modalId").textContent = item.id || "—";
+    $("modalDescricao").textContent = item.descricao || "Carregando conteúdo do edital...";
 
-    // Badges
-    const modalBadges = $("modalBadges");
-    modalBadges.replaceChildren();
-
-    const srcBadge = document.createElement("span");
-    srcBadge.className = "source-badge";
-    srcBadge.textContent = formatSource(item.fonte);
-    modalBadges.append(srcBadge);
-
-    const stBadge = document.createElement("span");
-    stBadge.className = `status-badge ${/aberto/i.test(item.status || "") ? "aberto" : ""}`;
-    stBadge.textContent = item.status || "Aberto";
-    modalBadges.append(stBadge);
-
-    // Description
-    $("modalDescricao").textContent = item.descricao || "Sem descrição adicional informada.";
-
-    // External link
     const extLink = $("modalExternalLink");
     if (item.link_edital) {
       extLink.href = item.link_edital;
@@ -235,15 +235,12 @@
       extLink.style.display = "none";
     }
 
-    // Try fetching full record from API if ID exists
     if (item.id) {
       try {
-        const detail = await request(`${API_BASE}/api/editais/${item.id}`);
-        if (detail.descricao) $("modalDescricao").textContent = detail.descricao;
-        if (detail.data_fechamento) $("modalFechamento").textContent = formatDate(detail.data_fechamento);
-      } catch (err) {
-        // Keep existing item state
-      }
+        const fullData = await request(`${API_BASE}/api/editais/${item.id}`);
+        if (fullData.descricao) $("modalDescricao").textContent = fullData.descricao;
+        if (fullData.data_fechamento) $("modalFechamento").textContent = formatDate(fullData.data_fechamento);
+      } catch (e) {}
     }
 
     modalOverlay.classList.add("active");
@@ -251,8 +248,8 @@
   }
 
   function renderTable(data) {
-    $("total").textContent = `(${data.total ?? 0})`;
-    const tbody = $("results");
+    $("totalCount").textContent = `(${data.total ?? 0})`;
+    const tbody = $("resultsTable");
     tbody.replaceChildren();
 
     if (!data.items?.length) {
@@ -261,92 +258,80 @@
       cell.colSpan = 5;
       cell.className = "muted";
       cell.style.textAlign = "center";
-      cell.style.padding = "24px";
-      cell.textContent = "Nenhum edital ou licitação encontrado para os filtros selecionados.";
+      cell.style.padding = "30px";
+      cell.textContent = "Nenhum edital encontrado para os filtros pesquisados.";
       return;
     }
 
     for (const item of data.items) {
       const row = tbody.insertRow();
-      row.style.cursor = "pointer";
 
-      // 1. Título
+      // Title
       const cellTitle = row.insertCell();
       cellTitle.className = "title-cell";
       cellTitle.textContent = item.titulo || "Licitação sem título";
 
-      // 2. Fonte
+      // Fonte
       const cellFonte = row.insertCell();
-      const badgeFonte = document.createElement("span");
-      badgeFonte.className = "source-badge";
-      badgeFonte.textContent = formatSource(item.fonte);
-      cellFonte.append(badgeFonte);
+      cellFonte.className = "tag-source";
+      cellFonte.textContent = (item.fonte || "—").toUpperCase();
 
-      // 3. Status
+      // Status
       const cellStatus = row.insertCell();
-      const badgeStatus = document.createElement("span");
-      const st = item.status || "Aberto";
-      badgeStatus.className = `status-badge ${/aberto/i.test(st) ? "aberto" : ""}`;
-      badgeStatus.textContent = st;
-      cellStatus.append(badgeStatus);
+      cellStatus.className = `tag-status ${/encerr/i.test(item.status || "") ? "encerrado" : ""}`;
+      cellStatus.textContent = item.status || "Aberto";
 
-      // 4. Fechamento
+      // Fechamento
       const cellFechamento = row.insertCell();
       cellFechamento.textContent = formatDate(item.data_fechamento);
 
-      // 5. Ações (Abrir Popup)
-      const cellActions = row.insertCell();
-      cellActions.style.textAlign = "right";
-      const btnDetail = document.createElement("button");
-      btnDetail.className = "btn-primary btn-sm";
-      btnDetail.textContent = "Ver detalhes";
-      btnDetail.onclick = (e) => {
+      // Action
+      const cellAction = row.insertCell();
+      cellAction.style.textAlign = "right";
+      const btn = document.createElement("button");
+      btn.className = "btn-link";
+      btn.textContent = "Ver detalhes";
+      btn.onclick = (e) => {
         e.stopPropagation();
-        openDetailModal(item);
+        openModal(item);
       };
-      cellActions.append(btnDetail);
+      cellAction.append(btn);
 
-      // Row click opens detail modal as well
-      row.onclick = () => openDetailModal(item);
+      row.onclick = () => openModal(item);
     }
   }
 
-  async function loadSources() {
+  async function executeSearch() {
+    setStatus("Buscando editais...");
+    const params = new URLSearchParams({
+      limit: $("limit").value || "20",
+      page: "1"
+    });
+    if ($("fonte").value) params.set("fonte", $("fonte").value);
+    if ($("texto").value.trim()) params.set("texto", $("texto").value.trim());
+    if ($("dataInicio").value) params.set("data_fechamento_inicio", $("dataInicio").value);
+
     try {
-      const res = await request(`${API_BASE}/api/editais/sources`);
-      renderSources(res.sources || []);
+      const res = await request(`${API_BASE}/api/editais/?${params.toString()}`);
+      renderTable(res);
+      setStatus("");
     } catch (e) {
-      statusMessage("Erro ao carregar fontes.", true);
+      setStatus(e.message, true);
     }
   }
 
-  async function refresh() {
-    try {
-      const data = await request(`${API_BASE}/api/editais/?${query()}`);
-      renderTable(data);
-      $("lastUpdate").textContent = `Sincronizado às ${new Date().toLocaleTimeString("pt-BR")}`;
-      statusMessage("");
-    } catch (error) {
-      statusMessage(error.message, true);
-    }
-  }
-
-  $("search").onclick = refresh;
-  for (const id of ["fonte", "status", "texto", "limit"]) {
-    $(id).addEventListener("change", refresh);
-  }
-
+  $("searchBtn").onclick = executeSearch;
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modalOverlay.classList.contains("active")) closeModal();
   });
 
   (async () => {
     try {
-      await loadSources();
-      await refresh();
-      setInterval(refresh, 15000);
-    } catch (error) {
-      statusMessage(error.message, true);
+      const srcRes = await request(`${API_BASE}/api/editais/sources`);
+      renderSources(srcRes.sources || []);
+      await executeSearch();
+    } catch (e) {
+      setStatus("Erro ao carregar fontes.", true);
     }
   })();
 </script>
