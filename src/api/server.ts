@@ -31,13 +31,14 @@ export async function buildServer() {
     }
     const url = request.raw.url ?? "";
     const pathname = url.split("?", 1)[0];
+    const isPublicAnalysis = request.method === "POST" && /^\/(?:webscrapper\/)?api\/editais\/[0-9a-fA-F-]+\/analysis$/.test(pathname);
     const isPublicRead = request.method === "GET" && (
       pathname === "/api/editais" ||
       pathname.startsWith("/api/editais/") ||
       pathname === "/webscrapper/api/editais" ||
       pathname.startsWith("/webscrapper/api/editais/")
     );
-    if (url === "/" || url === "/webscrapper" || url === "/webscrapper/" || url.startsWith("/docs") || url === "/openapi.json" || isPublicRead) {
+    if (isPublicAnalysis || url === "/" || url === "/webscrapper" || url === "/webscrapper/" || url.startsWith("/docs") || url === "/openapi.json" || isPublicRead) {
       done();
       return;
     }
