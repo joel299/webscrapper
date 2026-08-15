@@ -23,7 +23,10 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().default("https://fsdszcfkjeavuoinyjas.supabase.co"),
   SUPABASE_ANON_KEY: z.string().default(""),
   SUPABASE_BUCKET: z.string().default("edital"),
-  LLM_BASE_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1"),
+  LLM_CHAT_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/chat/completions"),
+  LLM_SEARCH_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/search"),
+  LLM_EMBEDDINGS_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/embeddings"),
+  LLM_RESPONSES_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/responses"),
   LLM_API_KEY: z.string().default(""),
   LLM_MODEL: z.string().default("auto/best-coding")
 });

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { pool } from "../db/pool.js";
 import { getEditalById } from "../db/repositories/editais.js";
 import { env } from "../config/env.js";
+import { enqueueAnalysis } from "../workers/queue.js";
 
 const PROMPT_VERSION = "1.0.0";
 
@@ -48,7 +49,7 @@ export async function runAnalysis(analysisId: string) {
   try {
     const llmHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (env.LLM_API_KEY) llmHeaders.Authorization = `Bearer ${env.LLM_API_KEY}`;
-    const res = await fetch(`${env.LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
+    const res = await fetch(env.LLM_CHAT_URL, {
       method: "POST",
       headers: llmHeaders,
       body: JSON.stringify({ model: env.LLM_MODEL, stream: false, temperature: 0.1, messages: [{ role: "system", content: "Responda apenas JSON válido." }, { role: "user", content: prompt }] }),
@@ -64,6 +65,25 @@ export async function runAnalysis(analysisId: string) {
     await pool.query("UPDATE edital_analises SET status='failed', erro=$1, atualizado_em=now() WHERE id=$2", [String(err?.message || err), analysisId]);
     throw err;
   }
+}
+
+export async function enqueuePendingAnalyses(limit = 20) {
+  const rows = await pool.query(
+    `SELECT e.id FROM editais e
+     WHERE NOT EXISTS (
+       SELECT 1 FROM edital_analises a
+       WHERE a.edital_id=e.id AND a.tipo='aderencia'
+         AND a.status IN ('queued','running','completed') AND a.expira_em > now()
+     )
+     ORDER BY e.atualizado_em DESC NULLS LAST, e.criado_em DESC LIMIT $1`,
+    [limit]
+  );
+  let queued = 0;
+  for (const row of rows.rows) {
+    const { analysis, cached } = await requestAnalysis(row.id, "aderencia");
+    if (!cached) { await enqueueAnalysis(analysis.id); queued++; }
+  }
+  return queued;
 }
 
 export async function listAnalyses(editalId: string) {

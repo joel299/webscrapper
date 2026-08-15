@@ -16,8 +16,6 @@ new Worker(
       await runScrapers(job.data.fonte);
     } else if (job.name === "cleanup") {
       await runCleanup();
-    } else if (job.name === "analysis") {
-      await runAnalysis(job.data.analysisId);
     }
   },
   {

@@ -77,6 +77,11 @@
     .analysis-section h3 { color: #eab308; font-size: 14px; margin: 0 0 8px; }
     .analysis-section ul { margin: 0; padding-left: 20px; }
     .analysis-section li { margin: 5px 0; }
+    .analysis-dl { margin: 0; }
+    .analysis-dl > div { display: grid; grid-template-columns: minmax(120px, 180px) 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid #1b2028; }
+    .analysis-dl dt { color: #c9a227; font-weight: 700; }
+    .analysis-dl dd { margin: 0; color: #d1d5db; }
+    .analysis-dl ul { margin: 0; padding-left: 20px; }
     .analysis-progress { color: #c9a227; padding: 24px 0; }
     .analysis-muted { color: #9ca3af; }
     .modal-sub { font-size: 12px; color: #9ca3af; display: flex; gap: 12px; }
@@ -339,20 +344,33 @@
   function closeAnalysis() { analysisOverlay.classList.remove("active"); analysisOverlay.setAttribute("aria-hidden", "true"); }
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
+  function renderStructured(value) {
+    if (value === null || value === undefined || value === "") return "Não identificado";
+    if (Array.isArray(value)) {
+      return `<ul>${value.map(item => `<li>${renderStructured(item)}</li>`).join("")}</ul>`;
+    }
+    if (typeof value === "object") {
+      return `<dl class="analysis-dl">${Object.entries(value).map(([key, item]) => `<div><dt>${esc(prettyLabel(key))}</dt><dd>${renderStructured(item)}</dd></div>`).join("")}</dl>`;
+    }
+    return esc(String(value));
+  }
+  function prettyLabel(key) {
+    return String(key).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
   function analysisList(title, values) {
     if (!Array.isArray(values) || !values.length) return "";
-    return `<section class="analysis-section"><h3>${esc(title)}</h3><ul>${values.map(v => `<li>${esc(typeof v === "string" ? v : v.nome || v.requisito || v.criterio || JSON.stringify(v))}</li>`).join("")}</ul></section>`;
+    return `<section class="analysis-section"><h3>${esc(title)}</h3>${renderStructured(values)}</section>`;
   }
   function renderAnalysis(result) {
     const r = result || {};
     const base = r.base_projeto_sugerida || {};
     return [
-      r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3><p>${esc(typeof r.resumo === "string" ? r.resumo : JSON.stringify(r.resumo))}</p></section>` : "",
+      r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3>${renderStructured(r.resumo)}</section>` : "",
       analysisList("Requisitos obrigatórios", r.requisitos_obrigatorios),
       analysisList("Documentos necessários", r.documentos_necessarios),
       analysisList("Critérios de avaliação", r.criterios_avaliacao),
       analysisList("Pontos de atenção", r.pontos_atencao),
-      Object.keys(base).length ? `<section class="analysis-section"><h3>Base de projeto sugerida</h3><p>${esc(JSON.stringify(base, null, 2))}</p></section>` : "",
+      Object.keys(base).length ? `<section class="analysis-section"><h3>Base de projeto sugerida</h3>${renderStructured(base)}</section>` : "",
       analysisList("Checklist", r.checklist)
     ].join("") || `<p class="analysis-muted">A análise não retornou dados estruturados.</p>`;
   }
