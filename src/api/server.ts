@@ -33,7 +33,9 @@ export async function buildServer() {
     const pathname = url.split("?", 1)[0];
     const isPublicRead = request.method === "GET" && (
       pathname === "/api/editais" ||
-      pathname.startsWith("/api/editais/")
+      pathname.startsWith("/api/editais/") ||
+      pathname === "/webscrapper/api/editais" ||
+      pathname.startsWith("/webscrapper/api/editais/")
     );
     if (url === "/" || url === "/webscrapper" || url === "/webscrapper/" || url.startsWith("/docs") || url === "/openapi.json" || isPublicRead) {
       done();
