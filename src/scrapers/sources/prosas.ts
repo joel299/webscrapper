@@ -10,8 +10,7 @@ function stripHtml(html: string) {
 }
 
 export async function prosasScraper() {
-  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "/usr/bin/google-chrome";
-  const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"], headless: true });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
 
