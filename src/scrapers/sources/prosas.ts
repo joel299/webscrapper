@@ -1,8 +1,7 @@
 import { chromium } from "playwright";
 import { env } from "../../config/env.js";
 import { upsertEditaisFromList, type EditalRichItem } from "../../db/repositories/editais.js";
-import { pool } from "../../db/pool.js";
-import { hospedarArquivos } from "../hosting.js";
+import { hospedarArquivos, type ArquivoHospedado } from "../hosting.js";
 
 function stripHtml(html: string) {
   if (!html) return "";
@@ -128,6 +127,19 @@ export async function prosasScraper() {
       const siteOficial = (byType["sites"] || []).map((s) => s.link).find(Boolean) || null;
       const whatsapp = whatsappFromDescription(descricao || "");
 
+      // Baixa e re-hospeda OS PDFs JÁ AQUI, enquanto o link assinado Oracle ainda é válido.
+      // (A hospedagem pós-loop falhava pois o token expira durante o processamento dos demais itens.)
+      let arquivosHospedados: ArquivoHospedado[] = [];
+      if (arquivos.length && bearerToken) {
+        try {
+          arquivosHospedados = await hospedarArquivos(arquivos, { Authorization: bearerToken });
+        } catch {
+          arquivosHospedados = arquivos;
+        }
+      } else {
+        arquivosHospedados = arquivos;
+      }
+
       mappedItems.push({
         titulo,
         link,
@@ -141,36 +153,13 @@ export async function prosasScraper() {
         odsTexto,
         whatsapp,
         siteOficial,
-        arquivos
+        arquivos: arquivosHospedados.map((a) => ({ tipo: a.tipo || "pdf", url: a.url, titulo: a.titulo }))
       });
     }
 
     const result = await upsertEditaisFromList("prosas", mappedItems);
     // eslint-disable-next-line no-console
     console.log(`[prosas] itens=${mappedItems.length} inseridos=${result.inserted}`);
-
-    // Re-hospeda os PDFs no bucket Supabase (expiração 7 dias) usando a sessão autenticada.
-    const authHeaders: Record<string, string> = {};
-    if (bearerToken) authHeaders.Authorization = bearerToken;
-    let hosted = 0;
-    for (const item of mappedItems) {
-      if (!item.arquivos?.length) continue;
-      const linkRow = await pool.query("SELECT id FROM editais WHERE link_edital = $1", [item.link]).catch(() => null);
-      if (!linkRow || !linkRow.rowCount) continue;
-      const editalId = linkRow.rows[0].id;
-      const hospedados = await hospedarArquivos(editalId, item.arquivos, authHeaders);
-      for (const h of hospedados) {
-        if (h.url_publica) {
-          await pool.query("UPDATE editais_arquivos SET url = $1 WHERE edital_id = $2 AND url = $3", [
-            h.url_publica,
-            editalId,
-            h.url
-          ]).catch(() => {});
-          hosted++;
-        }
-      }
-    }
-    if (hosted) console.log(`[prosas] arquivos hospedados=${hosted}`);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[prosas] erro:", error);
