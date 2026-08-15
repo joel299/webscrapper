@@ -130,9 +130,9 @@ export async function prosasScraper() {
       // Baixa e re-hospeda OS PDFs JÁ AQUI, enquanto o link assinado Oracle ainda é válido.
       // (A hospedagem pós-loop falhava pois o token expira durante o processamento dos demais itens.)
       let arquivosHospedados: ArquivoHospedado[] = [];
-      if (arquivos.length && bearerToken) {
+      if (arquivos.length) {
         try {
-          arquivosHospedados = await hospedarArquivos(arquivos, { Authorization: bearerToken });
+          arquivosHospedados = await hospedarArquivos(context, arquivos, { Authorization: bearerToken });
         } catch {
           arquivosHospedados = arquivos;
         }

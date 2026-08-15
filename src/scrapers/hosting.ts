@@ -1,4 +1,5 @@
-import { hostRemoteFile } from "../storage/supabase.js";
+import type { BrowserContext } from "playwright";
+import { uploadBuffer } from "../storage/supabase.js";
 import { pool } from "../db/pool.js";
 
 export interface ArquivoParaHospedar {
@@ -12,12 +13,12 @@ export interface ArquivoHospedado extends ArquivoParaHospedar {
   storage_path?: string;
 }
 
-// Baixa binário via sessão autenticada (headers extras, ex: Bearer da fonte) e
-// re-hospeda no bucket. Grava metadado de expiração (7 dias) por storage_path.
+// Baixa binário usando a sessão autenticada do Playwright (carrega cookies + bearer da Prosas)
+// e re-hospeda no bucket Supabase (expira 7 dias). Retorna lista com url pública quando possível.
 export async function hospedarArquivos(
+  context: BrowserContext,
   arquivos: ArquivoParaHospedar[],
-  extraHeaders: Record<string, string> = {},
-  editalId?: string
+  extraHeaders: Record<string, string> = {}
 ): Promise<ArquivoHospedado[]> {
   const out: ArquivoHospedado[] = [];
   for (const arq of arquivos) {
@@ -27,14 +28,13 @@ export async function hospedarArquivos(
     }
     if (arq.url.includes("/storage/v1/object/public/")) {
       out.push({ ...arq, url_publica: arq.url });
-      await recordExpiryByStoragePath(arq.url, arq.url, arq.titulo, editalId);
       continue;
     }
-    const ext = arq.url.match(/\.(\w{3,5})(\?|$)/)?.[1] || "pdf";
+    const ext = arq.url.match(/\.([A-Za-z0-9]{2,5})(\?|$)/)?.[1] || "pdf";
     const name = `${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-    const stored = await hostRemoteFile(arq.url, name, extraHeaders);
+    const stored = await thisRemoteWithContext(context, arq.url, name, extraHeaders);
     if (stored) {
-      await recordExpiry(stored.storage_path, stored.url_publica, arq.url, arq.titulo, editalId);
+      await recordExpiry(stored.storage_path, stored.url_publica, arq.url, arq.titulo);
       out.push({ ...arq, url: stored.url_publica, url_publica: stored.url_publica, storage_path: stored.storage_path });
     } else {
       out.push({ ...arq });
@@ -43,18 +43,31 @@ export async function hospedarArquivos(
   return out;
 }
 
-async function recordExpiry(storagePath: string, urlPublica: string, urlOriginal: string, titulo: string | null | undefined, editalId?: string): Promise<void> {
-  await pool.query(
-    `INSERT INTO editais_arquivos_hosted (edital_id, url_original, storage_path, url_publica, titulo, expira_em)
-     VALUES ($1, $2, $3, $4, $5, now() + interval '7 days')
-     ON CONFLICT (storage_path) DO UPDATE SET expira_em = now() + interval '7 days', edital_id = COALESCE($6, editais_arquivos_hosted.edital_id)`,
-    [editalId || null, urlOriginal, storagePath, urlPublica, titulo || null, editalId || null]
-  );
+// Baixa via context do Playwright (usa cookies/sessão) e faz upload no bucket.
+async function thisRemoteWithContext(
+  context: BrowserContext,
+  remoteUrl: string,
+  objectName: string,
+  extraHeaders: Record<string, string> = {}
+): Promise<{ url_publica: string; storage_path: string } | null> {
+  try {
+    const res = await context.request.get(remoteUrl, { headers: extraHeaders, timeout: 40000 });
+    if (!res.ok()) return null;
+    const buf = new Uint8Array(await res.body());
+    if (!buf.length) return null;
+    const ext = objectName.match(/\.(\w+)$/)?.[1] || "pdf";
+    const ctype = ext === "pdf" ? "application/pdf" : ext === "png" ? "image/png" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "application/octet-stream";
+    return await uploadBuffer(buf, objectName, ctype);
+  } catch {
+    return null;
+  }
 }
 
-// Quando o arquivo já veio do nosso bucket, registramos (ou renovamos) pelo path extraído da URL pública.
-async function recordExpiryByStoragePath(urlPublica: string, urlOriginal: string, titulo: string | null | undefined, editalId?: string): Promise<void> {
-  const m = urlPublica.match(/\/object\/public\/([^/]+)\/(.+)$/);
-  if (!m) return;
-  await recordExpiry(m[2], urlPublica, urlOriginal, titulo, editalId);
+async function recordExpiry(storagePath: string, urlPublica: string, urlOriginal: string, titulo: string | null | undefined): Promise<void> {
+  await pool.query(
+    `INSERT INTO editais_arquivos_hosted (edital_id, url_original, storage_path, url_publica, titulo, expira_em)
+     VALUES (NULL, $1, $2, $3, $4, now() + interval '7 days')
+     ON CONFLICT (storage_path) DO UPDATE SET expira_em = now() + interval '7 days'`,
+    [urlOriginal, storagePath, urlPublica, titulo || null]
+  );
 }
