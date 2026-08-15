@@ -14,6 +14,7 @@ export async function editaisRoutes(app: FastifyInstance) {
           status: { type: "string", maxLength: 50 },
           publico_alvo: { type: "string", maxLength: 200 },
           data_abertura_inicio: { type: "string", format: "date" },
+          data_fechamento_inicio: { type: "string", format: "date" },
           data_fechamento_fim: { type: "string", format: "date" },
           texto: { type: "string", maxLength: 200 },
           page: { type: "integer", minimum: 1, maximum: 10_000, default: 1 },

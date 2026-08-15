@@ -17,6 +17,11 @@ export async function listEditais(filters: Record<string, unknown>) {
   addFilter(filters.status, "status ILIKE $VALUE");
   addFilter(filters.texto, "(titulo ILIKE $VALUE OR descricao ILIKE $VALUE)");
 
+  if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) {
+    values.push(filters.data_fechamento_inicio);
+    conditions.push(`data_fechamento >= $${values.length}`);
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const limitIndex = values.length + 1;
   const offsetIndex = values.length + 2;

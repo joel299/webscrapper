@@ -17,16 +17,14 @@
     .panel { background: #12151b; border: 1px solid #1f242d; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
     .panel-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #c9a227; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
 
-    .sources-list { font-size: 13px; color: #9ca3af; display: flex; gap: 16px; flex-wrap: wrap; }
-    .sources-list strong { color: #d1d5db; font-weight: 500; }
 
     /* Search Grid */
-    .search-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr 120px; gap: 12px; align-items: end; }
+    .search-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr 100px 132px; gap: 12px; align-items: end; }
     label { display: grid; gap: 6px; color: #9ca3af; font-size: 13px; font-weight: 500; }
     input, select { background: #0b0d10; color: #ffffff; border-radius: 6px; border: 1px solid #282f3c; padding: 9px 12px; font: inherit; font-size: 14px; box-sizing: border-box; width: 100%; }
     input:focus, select:focus { outline: none; border-color: #c9a227; }
 
-    .btn-search { background: #c9a227; color: #0b0d10; border: none; border-radius: 6px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s ease; height: 40px; }
+    .btn-search { background: #c9a227; color: #0b0d10; border: none; border-radius: 6px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background 0.15s ease; height: 40px; }
     .btn-search:hover { background: #d9b132; }
 
     .btn-link { background: transparent; color: #c9a227; border: 1px solid #38321c; border-radius: 4px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.15s ease; }
@@ -63,7 +61,7 @@
     .meta-item div { font-weight: 600; color: #f3f4f6; margin-top: 2px; }
 
     .modal-section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #c9a227; margin-bottom: 8px; }
-    .modal-text-box { background: #0b0d10; border: 1px solid #1f242d; border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6; max-height: 240px; overflow-y: auto; white-space: pre-wrap; color: #e5e7eb; }
+    .modal-text-box { background: #0b0d10; border: 1px solid #1f242d; border-radius: 6px; padding: 16px; font-size: 14px; line-height: 1.6; min-height: 100px; max-height: 340px; overflow-y: auto; white-space: pre-wrap; color: #e5e7eb; }
 
     .modal-footer { padding: 16px 24px; border-top: 1px solid #1f242d; display: flex; justify-content: space-between; align-items: center; background: #0e1015; }
 
@@ -77,12 +75,6 @@
     <p class="subtitle">Monitoramento e consulta estruturada de oportunidades públicas e privadas.</p>
   </header>
 
-  <section class="panel">
-    <div class="panel-title">Fontes Integradas</div>
-    <div class="sources-list" id="sourcesList">
-      <span>Carregando fontes...</span>
-    </div>
-  </section>
 
   <section class="panel">
     <div class="panel-title">Filtros de Pesquisa</div>
@@ -93,8 +85,8 @@
       <label>Fonte
         <select id="fonte"><option value="">Todas as fontes</option></select>
       </label>
-      <label>Data Mínima de Fechamento
-        <input id="dataInicio" type="date" min="2026-08-14" value="2026-08-14">
+      <label>Data mínima de fechamento
+        <input id="dataInicio" type="date">
       </label>
       <label>Limite
         <input id="limit" type="number" min="1" max="100" value="20">
@@ -225,7 +217,7 @@
     $("modalStatus").textContent = item.status || "Aberto";
     $("modalFechamento").textContent = formatDate(item.data_fechamento);
     $("modalId").textContent = item.id || "—";
-    $("modalDescricao").textContent = item.descricao || "Carregando conteúdo do edital...";
+    $("modalDescricao").textContent = item.descricao || "Descrição não informada na fonte.";
 
     const extLink = $("modalExternalLink");
     if (item.link_edital) {
@@ -327,8 +319,6 @@
 
   (async () => {
     try {
-      const srcRes = await request(`${API_BASE}/api/editais/sources`);
-      renderSources(srcRes.sources || []);
       await executeSearch();
     } catch (e) {
       setStatus("Erro ao carregar fontes.", true);
