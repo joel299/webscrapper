@@ -241,10 +241,36 @@
   function formatDate(raw) {
     if (!raw) return "—";
     const str = String(raw).trim();
-    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    // ISO completo com data e hora: 2026-08-17T18:00:00.000-03:00 ou 2026-08-17 14:19
+    let iso = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (iso) return `${iso[3]}/${iso[2]}/${iso[1]} ${iso[4]}:${iso[5]}`;
+    const isoDate = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoDate) return `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}`;
+    // Date JS serializado: "Fri Aug 21 2026 00:00:00 GMT"
+    const js = str.match(/^(\w{3}) (\w{3}) (\d{1,2}) (\d{4})(?: (\d{2}):(\d{2}))?/);
+    if (js) {
+      const months = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+      const d = `${js[3].padStart(2, "0")}/${months[js[2]]}/${js[4]}`;
+      return js[5] ? `${d} ${js[5]}:${js[6]}` : d;
+    }
     return str;
   }
+
+  // Cria um link clicável com nome legível, sem exibir a URL crua.
+  function prettyLink(href) {
+    let label = "Acessar";
+    try {
+      const url = new URL(href);
+      // busca último segmento de path (arquivo/edital)
+      const segs = url.pathname.split("/").filter(Boolean);
+      const last = decodeURIComponent(segs[segs.length - 1] || "");
+      if (last && last.length > 2 && !/^(0|1|sao|o)$/i.test(last)) label = last;
+      else label = url.hostname.replace(/^www\./, "");
+    } catch (e) { /* retém fallback */ }
+    return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+  }
+
+  function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
   function renderSources(sources) {
     const select = $("fonte");
@@ -280,10 +306,17 @@
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function inlineMd(line) {
-    return line
+    // Converte URLs cruas (https://...) que aparecem no texto em links clicáveis
+    let out = line
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/`([^`]+)`/g, "<code>$1</code>")
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    // URLs cruas restantes viram link clicável com nome legível (não URL estática)
+    out = out.replace(/(^|[^">])(https?:\/\/[^\s<]+[^\s<.,;:)\]])/g, (m, pre, url) => {
+      const clean = url.replace(/[.,;:)]+$/, "");
+      return `${pre}${prettyLink(clean)}`;
+    });
+    return out;
   }
   function renderMd(text) {
     const lines = String(text).split("\n");

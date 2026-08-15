@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { env } from "../config/env.js";
 import { runScrapers } from "../scrapers/run.js";
+import { runCleanup } from "./cleanup.js";
 import { scraperQueue } from "./queue.js";
 
 const connection = {
@@ -12,6 +13,8 @@ new Worker(
   async (job) => {
     if (job.name === "run") {
       await runScrapers(job.data.fonte);
+    } else if (job.name === "cleanup") {
+      await runCleanup();
     }
   },
   {
@@ -35,3 +38,19 @@ await scraperQueue.add("run", { fonte: "all" }, {
 });
 
 await scraperQueue.add("run", { fonte: "all" }, automaticJobOptions);
+
+// Rotina de limpeza do bucket (expiração 7 dias) a cada 24h + imediatamente ao iniciar.
+await scraperQueue.add("cleanup", {}, {
+  removeOnComplete: { count: 100 },
+  removeOnFail: { count: 100 },
+  attempts: 2,
+  jobId: "cleanup-on-boot"
+});
+
+await scraperQueue.add("cleanup", {}, {
+  removeOnComplete: { count: 100 },
+  removeOnFail: { count: 100 },
+  attempts: 2,
+  repeat: { every: 24 * 60 * 60 * 1000 },
+  jobId: "cleanup-daily"
+});

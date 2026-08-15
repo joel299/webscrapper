@@ -19,7 +19,10 @@ const envSchema = z.object({
   SCRAPER_INTERVAL_MINUTES: z.coerce.number().int().min(1).default(15),
   USER_AGENT_ROTATION: z.coerce.boolean().default(true),
   PROSAS_USER: z.string().default("joel.acosta.quintana@gmail.com"),
-  PROSAS_PASS: z.string().default("Dj@7408-2012")
+  PROSAS_PASS: z.string().default("Dj@7408-2012"),
+  SUPABASE_URL: z.string().default("https://fsdszcfkjeavuoinyjas.supabase.co"),
+  SUPABASE_ANON_KEY: z.string().default(""),
+  SUPABASE_BUCKET: z.string().default("edital")
 });
 
 export const env = envSchema.parse(process.env);
