@@ -6,6 +6,7 @@ const connection = {
 };
 
 export const scraperQueue = new Queue("scraper", { connection });
+export const analysisQueue = new Queue("analysis", { connection });
 
 export async function enqueueScraperRun(fonte: string) {
   return scraperQueue.add("run", { fonte }, {
@@ -16,7 +17,7 @@ export async function enqueueScraperRun(fonte: string) {
 }
 
 export async function enqueueAnalysis(analysisId: string) {
-  return scraperQueue.add("analysis", { analysisId }, { removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
+  return analysisQueue.add("analysis", { analysisId }, { removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
 }
 
 export async function getAnalysisJobStatus(id: string) {

@@ -26,6 +26,14 @@ new Worker(
   }
 );
 
+new Worker(
+  "analysis",
+  async (job) => {
+    if (job.name === "analysis") await runAnalysis(job.data.analysisId);
+  },
+  { connection, concurrency: 1 }
+);
+
 const automaticJobOptions = {
   removeOnComplete: { count: 1000 },
   removeOnFail: { count: 1000 },

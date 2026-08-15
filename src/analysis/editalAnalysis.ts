@@ -21,10 +21,10 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
     `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND cache_key=$3 AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
     [editalId, tipo, key]
   );
-  if (cached.rowCount) return { analysis: cached.rows[0], cached: true };
+  if (cached.rowCount) return { analysis: cached.rows[0], cached: ["completed", "running"].includes(cached.rows[0].status) };
   const inserted = await pool.query(
     `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
-     VALUES ($1,$2,'queued','opencode-go',$3,$4,$5) RETURNING *`,
+     VALUES ($1,$2,'queued','omniroute',$3,$4,$5) RETURNING *`,
     [editalId, tipo, env.LLM_MODEL, PROMPT_VERSION, key]
   );
   return { analysis: inserted.rows[0], cached: false };
