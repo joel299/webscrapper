@@ -272,6 +272,30 @@
 
   function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+  // Formata datas/horas ISO ou brasileiras soltas dentro de um texto (ex: período, descrição)
+  // para o padrão dd/mm/aaaa hh:mm.
+  function formatDatesInText(texto) {
+    if (!texto) return texto;
+    return String(texto)
+      // ISO completo com T e offset: 2026-08-17T18:00:00.000-03:00
+      .replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})[.:]?\d*(?:[-+]\d{2}:?\d{2})?/g, (_, y, m, d, hh, mm) => `${d}/${m}/${y} ${hh}:${mm}`)
+      // ISO com hora sem T: 2026-08-17 14:19
+      .replace(/(\d{4})-(\d{2})-(\d{2})[ ](\d{2}):(\d{2})/g, (_, y, m, d, hh, mm) => `${d}/${m}/${y} ${hh}:${mm}`)
+      // ISO só data: 2026-08-21
+      .replace(/(\d{4})-(\d{2})-(\d{2})/g, (_, y, m, d) => `${d}/${m}/${y}`)
+      // brasileiro dd/mm/aaaa com hora ISO residual
+      .replace(/(\d{1,2})\/(\d{1,2})\/(\d{4})T(\d{2}):(\d{2})/g, (_, d, m, y, hh, mm) => `${d.padStart(2,"0")}/${m.padStart(2,"0")}/${y} ${hh}:${mm}`)
+      // Date JS: "Fri Aug 21 2026 00:00:00 GMT"
+      .replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}) (\d{4})(?: (\d{2}):(\d{2}))?/, (m) => gl_jsDates(m));
+  }
+  const gl_jsMonths = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+  function gl_jsDates(str) {
+    const m = str.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}) (\d{4})(?: (\d{2}):(\d{2}))?/);
+    if (!m) return str;
+    const d = `${m[3].padStart(2, "0")}/${gl_jsMonths[m[2]]}/${m[4]}`;
+    return m[5] ? `${d} ${m[5]}:${m[6]}` : d;
+  }
+
   function renderSources(sources) {
     const select = $("fonte");
     const current = select.value;
@@ -346,12 +370,12 @@
     $("modalFechamento").textContent = formatDate(item.data_fechamento);
     $("modalId").textContent = item.id || "—";
     $("modalValor").textContent = item.valor_texto || "—";
-    $("modalPeriodo").textContent = item.periodo_texto || "—";
+    $("modalPeriodo").textContent = formatDatesInText(item.periodo_texto) || "—";
     $("modalAreas").textContent = item.area_tematica || "—";
     $("modalPublico").textContent = item.publico_alvo || "—";
     $("modalOds").textContent = item.ods_texto || "—";
     $("modalWhatsapp").textContent = item.whatsapp || "—";
-    $("modalDescricao").textContent = item.descricao || "Descrição não informada na fonte.";
+    $("modalDescricao").textContent = item.descricao ? formatDatesInText(item.descricao) : "Descrição não informada na fonte.";
 
     const extLink = $("modalExternalLink");
     extLink.href = item.link_edital || "#";
@@ -364,13 +388,13 @@
       try {
         const fullData = await request(`${API_BASE}/api/editais/${item.id}`);
         if (fullData.texto_painel) {
-          $("modalDescricao").innerHTML = renderMd(fullData.texto_painel);
+          $("modalDescricao").innerHTML = renderMd(formatDatesInText(fullData.texto_painel));
         } else if (fullData.descricao) {
-          $("modalDescricao").textContent = fullData.descricao;
+          $("modalDescricao").textContent = formatDatesInText(fullData.descricao);
         }
         if (fullData.data_fechamento) $("modalFechamento").textContent = formatDate(fullData.data_fechamento);
         if (fullData.valor_texto) $("modalValor").textContent = fullData.valor_texto;
-        if (fullData.periodo_texto) $("modalPeriodo").textContent = fullData.periodo_texto;
+        if (fullData.periodo_texto) $("modalPeriodo").textContent = formatDatesInText(fullData.periodo_texto);
         if (fullData.area_tematica) $("modalAreas").textContent = fullData.area_tematica;
         if (fullData.publico_alvo) $("modalPublico").textContent = fullData.publico_alvo;
         if (fullData.ods_texto) $("modalOds").textContent = fullData.ods_texto;
