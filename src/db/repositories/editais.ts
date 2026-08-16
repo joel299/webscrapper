@@ -45,8 +45,8 @@ export async function listEditais(filters: Record<string, unknown>) {
     conditions.push(expression.replaceAll("$VALUE", `$${values.length}`));
   };
 
-  addFilter(filters.fonte, "fonte ILIKE $VALUE");
-  addFilter(filters.status, "status ILIKE $VALUE");
+  addFilter(filters.fonte, "e.fonte ILIKE $VALUE");
+  addFilter(filters.status, "e.status ILIKE $VALUE");
 
   // Fonte configurada por id de query pronta da planilha (?modo=software|ia|nuvem|...)
   const modo = typeof filters.modo === "string" ? filters.modo : "";
@@ -56,7 +56,7 @@ export async function listEditais(filters: Record<string, unknown>) {
       const termSql: string[] = [];
       for (const t of q.terms) {
         values.push(`%${t}%`);
-        termSql.push(`(titulo ILIKE $${values.length} OR descricao ILIKE $${values.length} OR area_tematica ILIKE $${values.length})`);
+        termSql.push(`(e.titulo ILIKE $${values.length} OR e.descricao ILIKE $${values.length} OR e.area_tematica ILIKE $${values.length})`);
       }
       conditions.push(`(${termSql.join(" OR ")})`);
     }
@@ -66,7 +66,7 @@ export async function listEditais(filters: Record<string, unknown>) {
       const termSql: string[] = [];
       for (const t of terms) {
         values.push(`%${t}%`);
-        termSql.push(`(titulo ILIKE $${values.length} OR descricao ILIKE $${values.length} OR area_tematica ILIKE $${values.length} OR publico_alvo ILIKE $${values.length})`);
+        termSql.push(`(e.titulo ILIKE $${values.length} OR e.descricao ILIKE $${values.length} OR e.area_tematica ILIKE $${values.length} OR e.publico_alvo ILIKE $${values.length})`);
       }
       conditions.push(`(${termSql.join(" OR ")})`);
     }
@@ -74,14 +74,14 @@ export async function listEditais(filters: Record<string, unknown>) {
 
   if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) {
     values.push(filters.data_fechamento_inicio);
-    conditions.push(`data_fechamento >= $${values.length}`);
+    conditions.push(`e.data_fechamento >= $${values.length}`);
   }
 
   // Força retorno de licitações reais: exclui títulos genéricos/não-editais
   const noise: string[] = [];
   for (const t of NON_EDITAL_TITLES) {
     values.push(`%${t}%`);
-    noise.push(`LOWER(titulo) LIKE $${values.length}`);
+    noise.push(`LOWER(e.titulo) LIKE $${values.length}`);
   }
   conditions.push(`NOT (${noise.join(" OR ")})`);
 
@@ -91,14 +91,22 @@ export async function listEditais(filters: Record<string, unknown>) {
   values.push(limit, offset);
 
   const { rows } = await pool.query(
-    `SELECT id, titulo, fonte, status, data_fechamento, link_edital, link_pdf, descricao,
-            valor_texto, periodo_texto, area_tematica, publico_alvo, ods_texto, whatsapp, site_oficial
-     FROM editais ${where}
-     ORDER BY data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+    `SELECT e.id, e.titulo, e.fonte, e.status, e.data_fechamento, e.link_edital, e.link_pdf, e.descricao,
+            e.valor_texto, e.periodo_texto, e.area_tematica, e.publico_alvo, e.ods_texto, e.whatsapp, e.site_oficial,
+            a.status AS analysis_status, a.id AS analysis_id
+     FROM editais e
+     LEFT JOIN LATERAL (
+       SELECT status, id FROM edital_analises
+       WHERE edital_id = e.id AND tipo = 'aderencia' AND expira_em > now()
+       ORDER BY CASE status WHEN 'completed' THEN 0 WHEN 'running' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END, criado_em DESC
+       LIMIT 1
+     ) a ON true
+     ${where}
+     ORDER BY e.data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
     values
   );
 
-  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM editais ${where}`, values.slice(0, -2));
+  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM editais e ${where}`, values.slice(0, -2));
   return { total: count.rows[0]?.total ?? 0, items: rows };
 }
 

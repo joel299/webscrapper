@@ -81,3 +81,36 @@ export async function listBucket(prefix = "editais/"): Promise<Array<{ name: str
     return [];
   }
 }
+
+// Upsert de uma análise na tabela REST do Supabase (PostgREST).
+// Requer a tabela public.edital_analises criada via SQL no projeto Supabase.
+export async function upsertAnalysisToSupabase(payload: {
+  analysis_id: string;
+  edital_id: string;
+  edital_titulo: string;
+  fonte: string;
+  status: string;
+  modelo: string;
+  resultado: unknown;
+  expira_em: string;
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`${base()}/rest/v1/edital_analises`, {
+      method: "POST",
+      headers: {
+        ...headers(),
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates"
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      console.warn(`[supabase] upsert análise falhou ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return false;
+    }
+    return true;
+  } catch (e: any) {
+    console.warn(`[supabase] upsert análise erro: ${e?.message || e}`);
+    return false;
+  }
+}

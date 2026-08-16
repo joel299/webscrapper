@@ -84,6 +84,7 @@
     .analysis-dl ul { margin: 0; padding-left: 20px; }
     .analysis-progress { color: #c9a227; padding: 24px 0; }
     .analysis-muted { color: #9ca3af; }
+    .tag-analysis { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid #c9a227; border-radius: 4px; color: #eab308; font-size: 10px; font-weight: 700; vertical-align: middle; }
     .modal-sub { font-size: 12px; color: #9ca3af; display: flex; gap: 12px; }
     .btn-close { background: transparent; border: none; color: #6b7280; font-size: 18px; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 4px; }
     .btn-close:hover { color: #ffffff; background: #1f242d; }
@@ -345,18 +346,32 @@
   function closeAnalysis() { analysisOverlay.classList.remove("active"); analysisOverlay.setAttribute("aria-hidden", "true"); }
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
+  function prettyLabel(key) {
+    return String(key).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // Remove metadados internos (fonte=descricao/periodo) que não devem aparecer ao usuário.
+  function sanitizeAnalysisItem(value) {
+    if (Array.isArray(value)) return value.map(sanitizeAnalysisItem);
+    if (value && typeof value === "object") {
+      const out = {};
+      for (const [k, v] of Object.entries(value)) {
+        if (k === "fonte") continue;
+        out[k] = sanitizeAnalysisItem(v);
+      }
+      return out;
+    }
+    return value;
+  }
   function renderStructured(value) {
     if (value === null || value === undefined || value === "") return "Não identificado";
     if (Array.isArray(value)) {
-      return `<ul>${value.map(item => `<li>${renderStructured(item)}</li>`).join("")}</ul>`;
+      return `<ul>${value.map(item => `<li>${renderStructured(sanitizeAnalysisItem(item))}</li>`).join("")}</ul>`;
     }
     if (typeof value === "object") {
-      return `<dl class="analysis-dl">${Object.entries(value).map(([key, item]) => `<div><dt>${esc(prettyLabel(key))}</dt><dd>${renderStructured(item)}</dd></div>`).join("")}</dl>`;
+      const clean = sanitizeAnalysisItem(value);
+      return `<dl class="analysis-dl">${Object.entries(clean).map(([key, item]) => `<div><dt>${esc(prettyLabel(key))}</dt><dd>${renderStructured(item)}</dd></div>`).join("")}</dl>`;
     }
     return esc(String(value));
-  }
-  function prettyLabel(key) {
-    return String(key).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
   function analysisList(title, values) {
     if (!Array.isArray(values) || !values.length) return "";
@@ -365,14 +380,16 @@
   function renderAnalysis(result) {
     const r = result || {};
     const base = r.base_projeto_sugerida || {};
+    const decisao = r.decisao || {};
     return [
       r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3>${renderStructured(r.resumo)}</section>` : "",
-      analysisList("Requisitos obrigatórios", r.requisitos_obrigatorios),
+      analysisList("Requisitos obrigatórios (quem pode participar)", r.requisitos_obrigatorios),
       analysisList("Documentos necessários", r.documentos_necessarios),
       analysisList("Critérios de avaliação", r.criterios_avaliacao),
       analysisList("Pontos de atenção", r.pontos_atencao),
+      Object.keys(decisao).length ? `<section class="analysis-section"><h3>Decisão recomendada</h3>${renderStructured(decisao)}</section>` : "",
       Object.keys(base).length ? `<section class="analysis-section"><h3>Base de projeto sugerida</h3>${renderStructured(base)}</section>` : "",
-      analysisList("Checklist", r.checklist)
+      analysisList("Checklist de submissão", r.checklist)
     ].join("") || `<p class="analysis-muted">A análise não retornou dados estruturados.</p>`;
   }
   async function requestAnalysis() {
@@ -561,6 +578,13 @@
       const cellStatus = row.insertCell();
       cellStatus.className = `tag-status ${/encerr/i.test(item.status || "") ? "encerrado" : ""}`;
       cellStatus.textContent = item.status || "Aberto";
+      if (item.analysis_status === "completed") {
+        const badge = document.createElement("span");
+        badge.className = "tag-analysis";
+        badge.textContent = "IA";
+        badge.title = "Análise de IA disponível";
+        cellStatus.append(badge);
+      }
 
       // Fechamento
       const cellFechamento = row.insertCell();
