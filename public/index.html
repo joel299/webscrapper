@@ -387,7 +387,21 @@
     let tries = 0;
     const timer = setInterval(async () => {
       tries++;
-      const data = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis/${started.analysis_id}`).catch(() => null);
+      const data = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis/${started.analysis_id}`).catch(async (error) => {
+        if (String(error?.message || "").includes("404")) {
+          clearInterval(timer);
+          $("analysisStatus").textContent = "Análise atualizada em segundo plano";
+          const latest = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`).catch(() => null);
+          const current = latest?.analyses?.find((x) => ["queued", "running", "completed"].includes(x.status));
+          if (current?.status === "completed") {
+            $("analysisStatus").textContent = "Concluída";
+            $("analysisBody").innerHTML = renderAnalysis(current.resultado);
+          } else if (current) {
+            $("analysisBody").innerHTML = `<div class="analysis-progress">A análise foi reenfileirada e continua sendo processada em segundo plano.</div>`;
+          }
+        }
+        return null;
+      });
       if (!data) return;
       if (data.status === "completed") { clearInterval(timer); $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = renderAnalysis(data.resultado); }
       else if (data.status === "failed") { clearInterval(timer); $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
@@ -590,7 +604,6 @@
     try {
       const res = await request(`${API_BASE}/api/editais/?${params.toString()}`);
       renderTable(res);
-      queueVisibleAnalyses(res.items);
       setStatus("");
     } catch (e) {
       setStatus(e.message, true);

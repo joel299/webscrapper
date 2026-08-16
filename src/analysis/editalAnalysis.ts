@@ -18,17 +18,31 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
   const edital = await getEditalById(editalId);
   if (!edital) throw new Error("Edital não encontrado");
   const key = cacheKey(edital);
-  const cached = await pool.query(
-    `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND cache_key=$3 AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
-    [editalId, tipo, key]
-  );
-  if (cached.rowCount) return { analysis: cached.rows[0], cached: ["completed", "running"].includes(cached.rows[0].status) };
-  const inserted = await pool.query(
-    `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
-     VALUES ($1,$2,'queued','omniroute',$3,$4,$5) RETURNING *`,
-    [editalId, tipo, env.LLM_MODEL, PROMPT_VERSION, key]
-  );
-  return { analysis: inserted.rows[0], cached: false };
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [key]);
+    const cached = await client.query(
+      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND cache_key=$3 AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
+      [editalId, tipo, key]
+    );
+    if (cached.rowCount) {
+      await client.query("COMMIT");
+      return { analysis: cached.rows[0], cached: ["completed", "running", "queued"].includes(cached.rows[0].status) };
+    }
+    const inserted = await client.query(
+      `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
+       VALUES ($1,$2,'queued','omniroute',$3,$4,$5) RETURNING *`,
+      [editalId, tipo, env.LLM_MODEL, PROMPT_VERSION, key]
+    );
+    await client.query("COMMIT");
+    return { analysis: inserted.rows[0], cached: false };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function runAnalysis(analysisId: string) {
