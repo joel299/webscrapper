@@ -324,17 +324,18 @@
     const current = select.value;
     select.replaceChildren(new Option("Todas as fontes", ""));
     const container = $("sourcesList");
-    container.replaceChildren();
+    if (container) container.replaceChildren();
 
     for (const src of sources) {
       select.append(new Option(src.toUpperCase(), src));
+      if (!container) continue;
       const tag = document.createElement("span");
       tag.className = "source-tag";
       tag.textContent = src.toUpperCase();
       container.append(tag);
     }
     if (sources.includes(current)) select.value = current;
-    if (!container.childNodes.length) container.textContent = "Nenhuma fonte registrada.";
+    if (container && !container.childNodes.length) container.textContent = "Nenhuma fonte registrada.";
   }
 
   // Modal Control

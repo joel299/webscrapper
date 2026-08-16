@@ -4,7 +4,7 @@ import { availableSources } from "../../scrapers/run.js";
 import { fetchEditalDetail } from "../../scrapers/detail.js";
 import { formatEditalBody } from "../../utils/formatEdital.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
-import { requestAnalysis, listAnalyses } from "../../analysis/editalAnalysis.js";
+import { requestAnalysis, listAnalyses, enqueuePendingAnalyses } from "../../analysis/editalAnalysis.js";
 import { enqueueAnalysis } from "../../workers/queue.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
@@ -62,7 +62,9 @@ export async function editaisRoutes(app: FastifyInstance) {
       }
     }
   }, async (request) => {
-    return listEditais(request.query as Record<string, unknown>);
+    const result = await listEditais(request.query as Record<string, unknown>);
+    void enqueuePendingAnalyses(50).catch((err) => app.log.warn({ err }, "Falha ao enfileirar análises pendentes"));
+    return result;
   });
 
   app.get("/sources", {

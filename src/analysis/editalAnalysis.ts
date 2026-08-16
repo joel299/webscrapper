@@ -4,7 +4,7 @@ import { getEditalById } from "../db/repositories/editais.js";
 import { env } from "../config/env.js";
 import { enqueueAnalysis } from "../workers/queue.js";
 
-const PROMPT_VERSION = "1.0.0";
+const PROMPT_VERSION = "1.1.0";
 
 function cacheKey(edital: any): string {
   return createHash("sha256").update(JSON.stringify({
