@@ -53,7 +53,9 @@ export async function editaisRoutes(app: FastifyInstance) {
                   publico_alvo: { type: ["string", "null"] },
                   ods_texto: { type: ["string", "null"] },
                   whatsapp: { type: ["string", "null"] },
-                  site_oficial: { type: ["string", "null"] }
+                  site_oficial: { type: ["string", "null"] },
+                  analysis_status: { type: ["string", "null"] },
+                  analysis_id: { type: ["string", "null"] }
                 }
               }
             }
