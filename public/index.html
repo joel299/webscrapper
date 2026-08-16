@@ -280,16 +280,18 @@
     return str;
   }
 
-  // Cria um link clicável com nome legível, sem exibir a URL crua.
+  // Cria um link clicável com nome legível, sem exibir a URL crua nem nomes numéricos de bucket.
   function prettyLink(href) {
-    let label = "Acessar";
+    let label = "Documento PDF do Edital";
     try {
       const url = new URL(href);
-      // busca último segmento de path (arquivo/edital)
       const segs = url.pathname.split("/").filter(Boolean);
       const last = decodeURIComponent(segs[segs.length - 1] || "");
-      if (last && last.length > 2 && !/^(0|1|sao|o)$/i.test(last)) label = last;
-      else label = url.hostname.replace(/^www\./, "");
+      if (last && last.length > 2 && !/^\d{8,}-\d+/i.test(last) && !/^(0|1|sao|o|index)$/i.test(last)) {
+        label = last;
+      } else {
+        label = "Documento PDF do Edital";
+      }
     } catch (e) { /* retém fallback */ }
     return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
   }
@@ -522,8 +524,10 @@
           span.textContent = "Nenhum documento disponível.";
           filesBox.append(span);
         } else {
+          let idx = 0;
           for (const file of arquivos) {
             if (!file.url) continue;
+            idx++;
             const a = document.createElement("a");
             a.className = "file-link";
             a.href = file.url;
@@ -531,9 +535,14 @@
             a.rel = "noopener noreferrer";
             const badge = document.createElement("span");
             badge.className = "file-badge";
-            badge.textContent = "pdf";
+            badge.textContent = file.tipo || "pdf";
             const label = document.createElement("span");
-            label.textContent = file.titulo || "Documento";
+            const rawTitle = (file.titulo || "").trim();
+            if (rawTitle && !/^(edital|pdf|documento|\d{8,}-\d+.*)$/i.test(rawTitle)) {
+              label.textContent = rawTitle;
+            } else {
+              label.textContent = `Edital / Documento Oficial ${idx}`;
+            }
             a.append(badge, label);
             filesBox.append(a);
           }

@@ -33,14 +33,28 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
   try {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [key]);
-    const cached = await client.query(
-      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND cache_key=$3 AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
-      [editalId, tipo, key]
+    
+    // 1. Busca primeiro se JÁ EXISTE qualquer análise concluída para este edital (nunca perde análise pronta)
+    const completed = await client.query(
+      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND status='completed' ORDER BY criado_em DESC LIMIT 1`,
+      [editalId, tipo]
     );
-    if (cached.rowCount) {
+    if (completed.rowCount) {
       await client.query("COMMIT");
-      return { analysis: cached.rows[0], cached: ["completed", "running", "queued"].includes(cached.rows[0].status) };
+      return { analysis: completed.rows[0], cached: true };
     }
+
+    // 2. Busca se há análise em andamento ou na fila
+    const pending = await client.query(
+      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND status IN ('running', 'queued') AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
+      [editalId, tipo]
+    );
+    if (pending.rowCount) {
+      await client.query("COMMIT");
+      return { analysis: pending.rows[0], cached: true };
+    }
+
+    // 3. Insere nova análise apenas se realmente não existir
     const inserted = await client.query(
       `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
        VALUES ($1,$2,'queued','omniroute',$3,$4,$5) RETURNING *`,
