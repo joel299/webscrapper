@@ -379,13 +379,32 @@
     if (!Array.isArray(values) || !values.length) return "";
     return `<section class="analysis-section"><h3>${esc(title)}</h3>${renderStructured(values)}</section>`;
   }
+  function renderRequisitos(list) {
+    if (!Array.isArray(list) || !list.length) return "";
+    const itemsHtml = list.map(item => {
+      if (typeof item === "string") return `<li>${esc(item)}</li>`;
+      if (typeof item === "object" && item !== null) {
+        const req = item.requisito || item.nome || item.titulo || "";
+        const ev = item.evidencia || item.descricao || item.texto || "";
+        if (req && ev) {
+          return `<li><strong>${esc(req)}:</strong> ${esc(ev)}</li>`;
+        } else if (req) {
+          return `<li><strong>${esc(req)}</strong></li>`;
+        } else if (ev) {
+          return `<li>${esc(ev)}</li>`;
+        }
+      }
+      return `<li>${renderStructured(sanitizeAnalysisItem(item))}</li>`;
+    }).join("");
+    return `<section class="analysis-section"><h3>Requisitos obrigatórios (quem pode participar)</h3><ul>${itemsHtml}</ul></section>`;
+  }
   function renderAnalysis(result) {
     const r = result || {};
     const base = r.base_projeto_sugerida || {};
     const decisao = r.decisao || {};
     return [
       r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3>${renderStructured(r.resumo)}</section>` : "",
-      analysisList("Requisitos obrigatórios (quem pode participar)", r.requisitos_obrigatorios),
+      renderRequisitos(r.requisitos_obrigatorios),
       analysisList("Documentos necessários", r.documentos_necessarios),
       analysisList("Critérios de avaliação", r.criterios_avaliacao),
       analysisList("Pontos de atenção", r.pontos_atencao),
