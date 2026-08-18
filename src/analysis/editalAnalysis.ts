@@ -54,10 +54,13 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
       return { analysis: pending.rows[0], cached: true };
     }
 
-    // 3. Insere nova análise apenas se realmente não existir
+    // 3. Insere nova análise ou atualiza existente em caso de re-tentativa (evita erro 400 de constraint unique)
     const inserted = await client.query(
       `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
-       VALUES ($1,$2,'queued','omniroute',$3,$4,$5) RETURNING *`,
+       VALUES ($1,$2,'queued','omniroute',$3,$4,$5)
+       ON CONFLICT (edital_id, tipo, cache_key)
+       DO UPDATE SET status='queued', erro=NULL, atualizado_em=now()
+       RETURNING *`,
       [editalId, tipo, env.LLM_MODEL, PROMPT_VERSION, key]
     );
     await client.query("COMMIT");
@@ -180,7 +183,7 @@ export async function enqueuePendingAnalyses(limit = 50) {
        WHERE a.edital_id=e.id AND a.tipo='aderencia'
          AND a.status IN ('queued','running','completed') AND a.expira_em > now()
      )
-     ORDER BY e.atualizado_em DESC NULLS LAST, e.criado_em DESC LIMIT $1`,
+     ORDER BY e.criado_em DESC LIMIT $1`,
     [limit]
   );
   let queued = 0;
