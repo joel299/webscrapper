@@ -29,7 +29,7 @@ new Worker(
   async (job) => {
     if (job.name === "analysis") await runAnalysis(job.data.analysisId);
   },
-  { connection, concurrency: 3 }
+  { connection, concurrency: 1 }
 );
 
 const automaticJobOptions = {

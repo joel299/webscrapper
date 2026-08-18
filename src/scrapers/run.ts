@@ -34,7 +34,7 @@ export async function runScrapers(fonte: string) {
     for (const scraper of Object.values(scrapers)) {
       await scraper();
     }
-    await enqueuePendingAnalyses(50);
+    await enqueuePendingAnalyses(100);
     return;
   }
 
@@ -45,5 +45,5 @@ export async function runScrapers(fonte: string) {
   }
 
   await scraper();
-  await enqueuePendingAnalyses(50);
+  await enqueuePendingAnalyses(100);
 }

@@ -65,7 +65,7 @@ export async function editaisRoutes(app: FastifyInstance) {
     }
   }, async (request) => {
     const result = await listEditais(request.query as Record<string, unknown>);
-    void enqueuePendingAnalyses(50).catch((err) => app.log.warn({ err }, "Falha ao enfileirar análises pendentes"));
+    void enqueuePendingAnalyses(100).catch((err) => app.log.warn({ err }, "Falha ao enfileirar análises pendentes"));
     return result;
   });
 
