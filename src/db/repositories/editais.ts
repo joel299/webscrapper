@@ -215,7 +215,8 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
       ods_texto = COALESCE(EXCLUDED.ods_texto, editais.ods_texto),
       whatsapp = COALESCE(EXCLUDED.whatsapp, editais.whatsapp),
       site_oficial = COALESCE(EXCLUDED.site_oficial, editais.site_oficial),
-      link_pdf = COALESCE(EXCLUDED.link_pdf, editais.link_pdf)
+      link_pdf = COALESCE(EXCLUDED.link_pdf, editais.link_pdf),
+      ultima_coleta_em = now()
     RETURNING id
   `;
 

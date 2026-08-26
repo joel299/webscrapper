@@ -6,7 +6,7 @@ import { fetchEditalDetail } from "../../scrapers/detail.js";
 import { formatEditalBody } from "../../utils/formatEdital.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
 import { requestAnalysis, listAnalyses } from "../../analysis/editalAnalysis.js";
-import { enqueueAnalysis } from "../../workers/queue.js";
+import { enqueueAnalysis, analysisQueueHasCapacity } from "../../workers/queue.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -115,6 +115,10 @@ export async function editaisRoutes(app: FastifyInstance) {
         return { analysis_id: analysis.id, status: "completed", cached: true, resultado: analysis.resultado };
       }
       if (!cached || analysis.status === "failed" || body.force === true) {
+        if (!(await analysisQueueHasCapacity(analysis.id))) {
+          await pool.query("UPDATE edital_analises SET status='failed', erro=$1, atualizado_em=now() WHERE id=$2", ["Fila de análises cheia; tente novamente em alguns minutos", analysis.id]);
+          return reply.code(429).send({ message: "A fila de análises está cheia. Tente novamente em alguns minutos.", status: "queue_full" });
+        }
         const job = await enqueueAnalysis(analysis.id);
         return reply.code(202).send({ analysis_id: analysis.id, job_id: job.id, status: "queued", cached: false });
       }

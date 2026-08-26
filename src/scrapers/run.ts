@@ -4,7 +4,7 @@ import { captaScraper } from "./sources/capta.js";
 import { pncpScraper } from "./sources/pncp.js";
 import { queridoDiarioScraper } from "./sources/queridodiario.js";
 import { comprasGovScraper } from "./sources/comprasgov.js";
-import { enqueuePendingAnalyses } from "../analysis/editalAnalysis.js";
+
 
 const scrapers = {
   capta: captaScraper,
@@ -34,7 +34,6 @@ export async function runScrapers(fonte: string) {
     for (const scraper of Object.values(scrapers)) {
       await scraper();
     }
-    await enqueuePendingAnalyses(100);
     return;
   }
 
@@ -45,5 +44,4 @@ export async function runScrapers(fonte: string) {
   }
 
   await scraper();
-  await enqueuePendingAnalyses(100);
 }

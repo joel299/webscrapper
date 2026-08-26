@@ -640,14 +640,6 @@
     }
   }
 
-  function queueVisibleAnalyses(items) {
-    if (!Array.isArray(items)) return;
-    // Dispara em segundo plano com JSON body válido; a busca e a tabela não aguardam a LLM.
-    items.slice(0, 20).forEach((item) => {
-      if (item?.id) fetch(`${API_BASE}/api/editais/${item.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
-    });
-  }
-
   async function executeSearch() {
     setStatus("Buscando editais...");
     const params = new URLSearchParams({

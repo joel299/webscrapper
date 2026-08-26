@@ -30,7 +30,8 @@ export const envSchema = z.object({
   LLM_API_KEY: z.string().default(""),
   LLM_MODEL: z.string().default("antigravity/gemini-3.6-flash-high"),
   ANALYSIS_RATE_LIMIT_MAX: z.coerce.number().int().default(10),
-  ANALYSIS_RATE_LIMIT_DURATION_MS: z.coerce.number().int().default(60000)
+  ANALYSIS_RATE_LIMIT_DURATION_MS: z.coerce.number().int().default(60000),
+  ANALYSIS_QUEUE_MAX_WAITING: z.coerce.number().int().min(1).default(10)
 });
 
 export const env = envSchema.parse(process.env);

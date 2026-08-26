@@ -1,10 +1,16 @@
 import { pool } from "../db/pool.js";
-import { deleteObject, listBucket } from "../storage/supabase.js";
+import { deleteObject, listBucket, deleteAnalysisFromSupabase } from "../storage/supabase.js";
+import { analysisQueue } from "./queue.js";
 
 // Remove do bucket os arquivos com expiração vencida (7 dias) e limpa os
 // metadados correlatos. Também limpa dados de editais marcados para purga.
 export async function runCleanup() {
-  // 1. Arquivos hospedados com prazo vencido
+  // 1. Jobs terminais antigos não precisam permanecer no Redis.
+  const jobGrace = 7 * 24 * 60 * 60 * 1000;
+  const removedCompletedJobs = await analysisQueue.clean(jobGrace, 1000, "completed");
+  const removedFailedJobs = await analysisQueue.clean(jobGrace, 1000, "failed");
+
+  // 2. Arquivos hospedados com prazo vencido
   const expired = await pool.query(
     "SELECT storage_path FROM editais_arquivos_hosted WHERE expira_em < now()"
   );
@@ -23,7 +29,20 @@ export async function runCleanup() {
     removedRows = res.rowCount ?? 0;
   }
 
-  // 2. Orfãos no bucket sem registro no banco (segurança) e sem host remoto válido
+  // 3. Remove editais expirados e todos os dados relacionados.
+  const expiredEditais = await pool.query(
+    `SELECT id FROM editais
+     WHERE (data_fechamento IS NOT NULL AND data_fechamento < CURRENT_DATE - interval '7 days')
+        OR (data_fechamento IS NULL AND ultima_coleta_em < now() - interval '7 days')`
+  );
+  let removedEditais = 0;
+  for (const row of expiredEditais.rows) {
+    await deleteAnalysisFromSupabase(row.id as string);
+    const result = await pool.query("DELETE FROM editais WHERE id = $1", [row.id]);
+    removedEditais += result.rowCount ?? 0;
+  }
+
+  // 4. Órfãos no bucket sem registro no banco.
   let removedOrphans = 0;
   try {
     const objects = await listBucket("editais/");
@@ -43,7 +62,7 @@ export async function runCleanup() {
     // ignore list errors
   }
 
-  console.log(`[cleanup] expirados=${expired.rows.length} rows=${removedRows} orfaos=${removedOrphans}`);
+  console.log(`[cleanup] jobs_completed=${removedCompletedJobs.length} jobs_failed=${removedFailedJobs.length} arquivos_expirados=${expired.rows.length} rows=${removedRows} editais=${removedEditais} orfaos=${removedOrphans}`);
 }
 
 // Marca um arquivo como hospedado (chamado após upload no bucket).

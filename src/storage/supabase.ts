@@ -96,12 +96,15 @@ export async function upsertAnalysisToSupabase(payload: {
 }): Promise<boolean> {
   if (!env.SUPABASE_ANON_KEY) return false;
   try {
+    // A tabela legada não garante unicidade por edital; remove versões
+    // anteriores antes de persistir somente o resultado mais recente.
+    await deleteAnalysisFromSupabase(payload.edital_id);
     const res = await fetch(`${base()}/rest/v1/edital_analises`, {
       method: "POST",
       headers: {
         ...headers(),
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates"
+        Prefer: "return=minimal"
       },
       body: JSON.stringify(payload)
     });
@@ -112,6 +115,19 @@ export async function upsertAnalysisToSupabase(payload: {
     return true;
   } catch (e: any) {
     console.warn(`[supabase] upsert análise erro: ${e?.message || e}`);
+    return false;
+  }
+}
+
+export async function deleteAnalysisFromSupabase(editalId: string): Promise<boolean> {
+  if (!env.SUPABASE_ANON_KEY) return false;
+  try {
+    const res = await fetch(`${base()}/rest/v1/edital_analises?edital_id=eq.${encodeURIComponent(editalId)}`, {
+      method: "DELETE",
+      headers: headers()
+    });
+    return res.ok;
+  } catch {
     return false;
   }
 }
