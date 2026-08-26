@@ -15,7 +15,41 @@ export interface EditalRichItem {
   odsTexto?: string | null;
   whatsapp?: string | null;
   siteOficial?: string | null;
-  arquivos?: Array<{ tipo: string; url: string; titulo: string }>;
+  arquivos?: Array<EditalDocument>;
+  externalId?: string;
+  canonicalKey?: string;
+  sourceType?: string;
+  contentHash?: string;
+  documentsStatus?: string;
+  numeroEdital?: string;
+  numeroProcesso?: string;
+  orgao?: string;
+  municipio?: string;
+  estado?: string;
+  modalidade?: string;
+  tipoJulgamento?: string;
+  tipoDisputa?: string;
+  pregoeiro?: string;
+  legislacao?: string;
+  inicioEnvioPropostas?: string;
+  fimEnvioPropostas?: string;
+  aberturaLicitacao?: string;
+  andamento?: string;
+}
+
+export interface EditalDocument {
+  nome?: string;
+  tipo: string;
+  data_publicacao?: string;
+  url_origem?: string;
+  mime_type?: string;
+  tamanho_bytes?: number;
+  sha256?: string;
+  status_download?: string;
+  texto_extraido?: string;
+  erro?: string;
+  url?: string;
+  titulo?: string;
 }
 
 // Títulos/ruído de itens que não são editais/licitações reais
@@ -175,7 +209,7 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
 
     const data_fechamento = normalizeDate(item.data_fechamento);
 
-    const base = validCount * 14;
+    const base = validCount * 35;
     values.push(
       fonte,
       rawTitle,
@@ -190,9 +224,14 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
       item.odsTexto?.trim() || null,
       item.whatsapp?.trim() || null,
       item.siteOficial?.trim() || null,
-      item.link_pdf?.trim() || null
+      item.link_pdf?.trim() || null,
+      item.externalId || null, item.canonicalKey || null, fonte, item.sourceType || null, item.contentHash || null,
+      item.documentsStatus || null, item.numeroEdital || null, item.numeroProcesso || null, item.orgao || null,
+      item.municipio || null, item.estado || null, item.modalidade || null, item.tipoJulgamento || null,
+      item.tipoDisputa || null, item.pregoeiro || null, item.legislacao || null, item.inicioEnvioPropostas || null,
+      item.fimEnvioPropostas || null, item.aberturaLicitacao || null, item.andamento || null
     );
-    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14})`);
+    placeholders.push(`(${Array.from({ length: 35 }, (_, i) => `$${base + i + 1}`).join(", ")})`);
     validCount++;
   });
 
@@ -201,7 +240,10 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
   const query = `
     INSERT INTO editais (fonte, titulo, link_edital, status, data_fechamento, descricao,
                          valor_texto, periodo_texto, area_tematica, publico_alvo, ods_texto,
-                         whatsapp, site_oficial, link_pdf)
+                         whatsapp, site_oficial, link_pdf, external_id, canonical_key, source_code, source_type,
+                         content_hash, documents_status, analysis_status, numero_edital, numero_processo, orgao,
+                         municipio, estado, modalidade, tipo_julgamento, tipo_disputa, pregoeiro, legislacao,
+                         inicio_envio_propostas, fim_envio_propostas, abertura_licitacao, andamento)
     VALUES ${placeholders.join(", ")}
     ON CONFLICT (link_edital) DO UPDATE SET
       titulo = EXCLUDED.titulo,
@@ -216,6 +258,16 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
       whatsapp = COALESCE(EXCLUDED.whatsapp, editais.whatsapp),
       site_oficial = COALESCE(EXCLUDED.site_oficial, editais.site_oficial),
       link_pdf = COALESCE(EXCLUDED.link_pdf, editais.link_pdf),
+      external_id = COALESCE(EXCLUDED.external_id, editais.external_id), canonical_key = COALESCE(EXCLUDED.canonical_key, editais.canonical_key),
+      source_code = COALESCE(EXCLUDED.source_code, editais.source_code), source_type = COALESCE(EXCLUDED.source_type, editais.source_type),
+      content_hash = COALESCE(EXCLUDED.content_hash, editais.content_hash), documents_status = COALESCE(EXCLUDED.documents_status, editais.documents_status),
+      analysis_status = COALESCE(EXCLUDED.analysis_status, editais.analysis_status), numero_edital = COALESCE(EXCLUDED.numero_edital, editais.numero_edital),
+      numero_processo = COALESCE(EXCLUDED.numero_processo, editais.numero_processo), orgao = COALESCE(EXCLUDED.orgao, editais.orgao),
+      municipio = COALESCE(EXCLUDED.municipio, editais.municipio), estado = COALESCE(EXCLUDED.estado, editais.estado), modalidade = COALESCE(EXCLUDED.modalidade, editais.modalidade),
+      tipo_julgamento = COALESCE(EXCLUDED.tipo_julgamento, editais.tipo_julgamento), tipo_disputa = COALESCE(EXCLUDED.tipo_disputa, editais.tipo_disputa),
+      pregoeiro = COALESCE(EXCLUDED.pregoeiro, editais.pregoeiro), legislacao = COALESCE(EXCLUDED.legislacao, editais.legislacao),
+      inicio_envio_propostas = COALESCE(EXCLUDED.inicio_envio_propostas, editais.inicio_envio_propostas), fim_envio_propostas = COALESCE(EXCLUDED.fim_envio_propostas, editais.fim_envio_propostas),
+      abertura_licitacao = COALESCE(EXCLUDED.abertura_licitacao, editais.abertura_licitacao), andamento = COALESCE(EXCLUDED.andamento, editais.andamento),
       ultima_coleta_em = now()
     RETURNING id
   `;
@@ -234,12 +286,15 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
       if (!linkResult.rowCount) continue;
       const editalId = linkResult.rows[0].id;
       for (const a of item.arquivos ?? []) {
-        if (!a.url) continue;
         await pool.query(
-          `INSERT INTO editais_arquivos (edital_id, tipo, url, titulo)
-           VALUES ($1, $2, $3, $4)
-           ON CONFLICT DO NOTHING`,
-          [editalId, a.tipo || "pdf", a.url, a.titulo || null]
+          `INSERT INTO editais_arquivos (edital_id, tipo, url, titulo, data_publicacao, url_origem, mime_type, tamanho_bytes, sha256, status_download, texto_extraido, erro)
+           VALUES ($1, $2, $3, $4, $5, $3, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (edital_id, url) DO UPDATE SET
+             tipo = EXCLUDED.tipo, titulo = EXCLUDED.titulo, data_publicacao = EXCLUDED.data_publicacao,
+             url_origem = EXCLUDED.url_origem, mime_type = EXCLUDED.mime_type, tamanho_bytes = EXCLUDED.tamanho_bytes,
+             sha256 = EXCLUDED.sha256, status_download = EXCLUDED.status_download, texto_extraido = EXCLUDED.texto_extraido,
+             erro = EXCLUDED.erro`,
+          [editalId, a.tipo || "Outro", a.url || a.url_origem || null, a.titulo || a.nome || null, a.data_publicacao || null, a.mime_type || null, a.tamanho_bytes || null, a.sha256 || null, a.status_download || null, a.texto_extraido || null, a.erro || null]
         );
       }
     }

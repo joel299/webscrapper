@@ -369,6 +369,13 @@
           <div id="modalWhatsapp">—</div>
         </div>
       </div>
+      <div id="modalComprasBr" class="meta-grid" hidden>
+        <div class="meta-item"><label>Número do pregão</label><div id="modalNumeroEdital">—</div></div>
+        <div class="meta-item"><label>Número do processo</label><div id="modalNumeroProcesso">—</div></div>
+        <div class="meta-item"><label>Órgão</label><div id="modalOrgao">—</div></div>
+        <div class="meta-item"><label>Critério / disputa</label><div id="modalCriterio">—</div></div>
+        <div class="meta-item"><label>Status dos documentos</label><div id="modalDocumentosStatus">—</div></div>
+      </div>
       <div>
         <div class="modal-section-label">Descrição Completa e Escopo do Edital</div>
         <div id="modalDescricao" class="modal-text-box">Nenhuma descrição disponível.</div>
@@ -491,20 +498,20 @@
     if (container) container.replaceChildren();
 
     for (const src of sources) {
-      select.append(new Option(src.toUpperCase(), src));
+      select.append(new Option(humanSource(src), src));
       if (sourceOptions) {
         const option = document.createElement("button");
         option.type = "button";
         option.className = "source-picker-option";
         option.setAttribute("role", "option");
         option.dataset.value = src;
-        option.textContent = src.toUpperCase();
+        option.textContent = humanSource(src);
         sourceOptions.append(option);
       }
       if (!container) continue;
       const tag = document.createElement("span");
       tag.className = "source-tag";
-      tag.textContent = src.toUpperCase();
+      tag.textContent = humanSource(src);
       container.append(tag);
     }
     if (sources.includes(current)) select.value = current;
@@ -573,9 +580,11 @@
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
   const analysisTypeLabels = { contratacao_publica: "Contratação pública", financiamento_de_projeto: "Financiamento de projeto", premio_ou_concurso: "Prêmio ou concurso", beneficio_individual: "Benefício ou pagamento individual", credenciamento: "Credenciamento", patrocinio: "Patrocínio", oportunidade_continua: "Oportunidade contínua", conteudo_informativo: "Conteúdo informativo", outro: "Outra oportunidade" };
+  const sourceLabels = { COMPRAS_BR: "Compras BR", compras_br: "Compras BR" };
   const deliveryTypeLabels = { projeto_estruturado: "Projeto estruturado", solucao_tecnica: "Solução técnica", estrategia_de_candidatura: "Estratégia de candidatura", dossie_de_trajetoria: "Dossiê de trajetória", plano_de_inscricao: "Plano de inscrição", plano_de_habilitacao: "Plano de habilitação" };
   const checklistTypeLabels = { obrigatorio: "Obrigatório", recomendado: "Recomendado", confirmar: "Confirmar" };
   function humanType(value) { return analysisTypeLabels[value] || String(value || "Tipo não localizado").replace(/_/g, " "); }
+  function humanSource(value) { return sourceLabels[value] || String(value || "Fonte não localizada"); }
   function humanDeliveryType(value) { return deliveryTypeLabels[value] || String(value || "Entrega não localizada").replace(/_/g, " "); }
   function text(value, fallback = "Não localizado no material analisado.") { return value === null || value === undefined || String(value).trim() === "" ? `<p class="analysis-muted">${esc(fallback)}</p>` : `<p>${esc(String(value))}</p>`; }
   function paragraphs(values) { return Array.isArray(values) && values.length ? values.map(value => text(value)).join("") : text(null); }
@@ -685,16 +694,24 @@
     lastFocusedElement = document.activeElement;
     activeItem = item;
     $("modalTitle").textContent = item.titulo || "Detalhes do Edital";
-    $("modalFonte").textContent = (item.fonte || "—").toUpperCase();
+    $("modalFonte").textContent = humanSource(item.fonte);
     $("modalStatus").textContent = item.status || "Aberto";
     $("modalFechamento").textContent = formatDate(item.data_fechamento);
-    $("modalId").textContent = item.id || "—";
+    $("modalId").textContent = item.external_id ? `${item.external_id} · ${item.id || ""}` : (item.id || "—");
     $("modalValor").textContent = item.valor_texto || "—";
     $("modalPeriodo").textContent = formatDatesInText(item.periodo_texto) || "—";
     $("modalAreas").textContent = item.area_tematica || "—";
     $("modalPublico").textContent = item.publico_alvo || "—";
     $("modalOds").textContent = item.ods_texto || "—";
     $("modalWhatsapp").textContent = item.whatsapp || "—";
+    $("modalComprasBr").hidden = item.source_code !== "COMPRAS_BR";
+    if (item.source_code === "COMPRAS_BR") {
+      $("modalNumeroEdital").textContent = item.numero_edital || "—";
+      $("modalNumeroProcesso").textContent = item.numero_processo || "—";
+      $("modalOrgao").textContent = item.orgao || "—";
+      $("modalCriterio").textContent = [item.tipo_julgamento, item.tipo_disputa].filter(Boolean).join(" · ") || "—";
+      $("modalDocumentosStatus").textContent = item.documents_status || "Captura em andamento";
+    }
     $("modalDescricao").textContent = item.descricao ? formatDatesInText(item.descricao) : "Descrição não informada na fonte.";
 
     const extLink = $("modalExternalLink");
@@ -721,6 +738,16 @@
         if (fullData.whatsapp) $("modalWhatsapp").textContent = fullData.whatsapp;
         if (fullData.site_oficial) { siteLink.href = fullData.site_oficial; siteLink.style.display = "inline-flex"; }
         if (fullData.link_edital) { extLink.href = fullData.link_edital; extLink.style.display = "inline-flex"; }
+        if (fullData.fonte) $("modalFonte").textContent = humanSource(fullData.fonte);
+        if (fullData.external_id) $("modalId").textContent = `${fullData.external_id} · ${fullData.id || ""}`;
+        $("modalComprasBr").hidden = fullData.source_code !== "COMPRAS_BR";
+        if (fullData.source_code === "COMPRAS_BR") {
+          $("modalNumeroEdital").textContent = fullData.numero_edital || "—";
+          $("modalNumeroProcesso").textContent = fullData.numero_processo || "—";
+          $("modalOrgao").textContent = fullData.orgao || "—";
+          $("modalCriterio").textContent = [fullData.tipo_julgamento, fullData.tipo_disputa].filter(Boolean).join(" · ") || "—";
+          $("modalDocumentosStatus").textContent = fullData.documents_status || "Captura em andamento";
+        }
 
         const arquivos = Array.isArray(fullData.arquivos) ? fullData.arquivos : [];
         const filesBox = $("modalArquivos");
@@ -788,7 +815,7 @@
       // Fonte
       const cellFonte = row.insertCell();
       cellFonte.className = "tag-source";
-      cellFonte.textContent = (item.fonte || "—").toUpperCase();
+      cellFonte.textContent = humanSource(item.fonte);
 
       // Status
       const cellStatus = row.insertCell();

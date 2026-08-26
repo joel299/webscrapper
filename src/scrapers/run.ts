@@ -4,6 +4,7 @@ import { captaScraper } from "./sources/capta.js";
 import { pncpScraper } from "./sources/pncp.js";
 import { queridoDiarioScraper } from "./sources/queridodiario.js";
 import { comprasGovScraper } from "./sources/comprasgov.js";
+import { comprasBrScraper } from "./sources/comprasbr.js";
 
 
 const scrapers = {
@@ -12,7 +13,8 @@ const scrapers = {
   prosas: prosasScraper,
   ligacriativa: ligaCriativaScraper,
   queridodiario: queridoDiarioScraper,
-  comprasgov: comprasGovScraper
+  comprasgov: comprasGovScraper,
+  compras_br: comprasBrScraper
 };
 
 export const availableSources = Object.keys(scrapers);
@@ -20,7 +22,8 @@ export const availableSources = Object.keys(scrapers);
 const fonteAliases: Record<string, keyof typeof scrapers> = {
   "https://prosas.com.br/editais": "prosas",
   "https://www.ligacriativa.com.br/editais-abertos": "ligacriativa",
-  "https://capta.org.br/fontes-de-financiamento/oportunidades/": "capta"
+  "https://capta.org.br/fontes-de-financiamento/oportunidades/": "capta",
+  "https://comprasbr.com.br/pregao-eletronico/?objeto=IA&status=ABERTO": "compras_br"
 };
 
 function normalizeFonte(input: string) {

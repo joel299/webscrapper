@@ -1,0 +1,32 @@
+DO $$
+BEGIN
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS source_code TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS source_type TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS external_id TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS canonical_key TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS content_hash TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS documents_status TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS analysis_status TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS numero_edital TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS numero_processo TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS orgao TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS municipio TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS estado TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS modalidade TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS tipo_julgamento TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS tipo_disputa TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS pregoeiro TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS legislacao TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS inicio_envio_propostas TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS fim_envio_propostas TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS abertura_licitacao TEXT;
+  ALTER TABLE editais ADD COLUMN IF NOT EXISTS andamento TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS data_publicacao TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS url_origem TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS mime_type TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS tamanho_bytes BIGINT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS sha256 TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS status_download TEXT;
+  ALTER TABLE editais_arquivos ADD COLUMN IF NOT EXISTS erro TEXT;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS editais_canonical_key_unique ON editais(canonical_key) WHERE canonical_key IS NOT NULL;
