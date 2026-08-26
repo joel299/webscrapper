@@ -575,7 +575,7 @@
   const analysisTypeLabels = { contratacao_publica: "Contratação pública", financiamento_de_projeto: "Financiamento de projeto", premio_ou_concurso: "Prêmio ou concurso", beneficio_individual: "Benefício ou pagamento individual", credenciamento: "Credenciamento", patrocinio: "Patrocínio", oportunidade_continua: "Oportunidade contínua", conteudo_informativo: "Conteúdo informativo", outro: "Outra oportunidade" };
   const deliveryTypeLabels = { projeto_estruturado: "Projeto estruturado", solucao_tecnica: "Solução técnica", estrategia_de_candidatura: "Estratégia de candidatura", dossie_de_trajetoria: "Dossiê de trajetória", plano_de_inscricao: "Plano de inscrição", plano_de_habilitacao: "Plano de habilitação" };
   const checklistTypeLabels = { obrigatorio: "Obrigatório", recomendado: "Recomendado", confirmar: "Confirmar" };
-  function humanType(value) { return analysisTypeLabels[value] || value || "Tipo não localizado"; }
+  function humanType(value) { return analysisTypeLabels[value] || String(value || "Tipo não localizado").replace(/_/g, " "); }
   function humanDeliveryType(value) { return deliveryTypeLabels[value] || String(value || "Entrega não localizada").replace(/_/g, " "); }
   function text(value, fallback = "Não localizado no material analisado.") { return value === null || value === undefined || String(value).trim() === "" ? `<p class="analysis-muted">${esc(fallback)}</p>` : `<p>${esc(String(value))}</p>`; }
   function paragraphs(values) { return Array.isArray(values) && values.length ? values.map(value => text(value)).join("") : text(null); }
