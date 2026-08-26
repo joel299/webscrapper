@@ -114,7 +114,7 @@ export async function editaisRoutes(app: FastifyInstance) {
       if (analysis.status === "completed") {
         return { analysis_id: analysis.id, status: "completed", cached: true, resultado: analysis.resultado };
       }
-      if (!cached || analysis.status === "failed") {
+      if (!cached || analysis.status === "failed" || body.force === true) {
         const job = await enqueueAnalysis(analysis.id);
         return reply.code(202).send({ analysis_id: analysis.id, job_id: job.id, status: "queued", cached: false });
       }
