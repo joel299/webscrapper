@@ -135,7 +135,7 @@
     * { box-sizing: border-box; }
     html { min-width: 320px; background: var(--surface-void); }
     body { background: var(--surface-void); color: var(--color-bone); font-family: var(--font-inter); font-size: 16px; line-height: 1.5; overflow-x: hidden; }
-    main { width: min(100% - 40px, var(--page-max-width)); padding: 48px 0 96px; }
+    main { margin: 0 auto; max-width: var(--page-max-width); width: calc(100% - 40px); padding: 48px 0 96px; }
     .header { margin-bottom: 40px; border-bottom: 1px solid var(--color-graphite); padding-bottom: 24px; }
     h1 { color: var(--color-paper-white); font-family: var(--font-ivy-presto); font-size: clamp(36px, 5vw, 64px); font-weight: 400; letter-spacing: .01em; line-height: 1.08; margin: 0 0 12px; }
     p.subtitle { color: var(--color-fog); font-size: 18px; line-height: 1.38; margin: 0; max-width: 720px; }
@@ -154,20 +154,25 @@
     .btn-search { align-items: center; background: var(--color-paper-white); border: 0; border-radius: var(--radius-full); color: var(--color-obsidian); cursor: pointer; display: inline-flex; font: 500 14px var(--font-inter); justify-content: center; min-height: 44px; padding: 10px 20px; transition: opacity .15s ease, transform .15s ease; white-space: nowrap; }
     .btn-search:hover:not(:disabled) { opacity: .86; transform: translateY(-1px); }
     .btn-search:active:not(:disabled) { transform: translateY(0); }
-    .btn-link { align-items: center; background: transparent; border: 1px solid var(--color-steel); border-radius: var(--radius-full); color: var(--color-paper-white); cursor: pointer; display: inline-flex; font: 500 13px var(--font-inter); justify-content: center; min-height: 44px; padding: 8px 14px; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
+    .btn-link { align-items: center; background: transparent; border: 1px solid var(--color-steel); border-radius: var(--radius-full); color: var(--color-paper-white); cursor: pointer; display: inline-flex; font: 500 13px var(--font-inter); justify-content: center; min-height: 44px; padding: 8px 12px; text-decoration: none; transition: background .15s ease, border-color .15s ease; white-space: nowrap; }
     .btn-link:hover { background: var(--surface-panel); border-color: var(--color-paper-white); }
     #statusMessage { color: var(--color-fog) !important; min-height: 24px !important; }
     #statusMessage.status-error { color: var(--color-bone) !important; }
     #statusMessage:not(:empty) { border-left: 2px solid var(--color-copper); padding-left: 12px; }
     .table-scroll { overflow-x: auto; width: 100%; }
-    table { margin-top: 0; min-width: 700px; }
+    table { margin-top: 0; min-width: 760px; table-layout: fixed; }
+    th:nth-child(1), td:nth-child(1) { width: 45%; }
+    th:nth-child(2), td:nth-child(2) { width: 15%; }
+    th:nth-child(3), td:nth-child(3) { width: 17%; }
+    th:nth-child(4), td:nth-child(4) { width: 13%; }
+    th:nth-child(5), td:nth-child(5) { width: 10%; }
     th, td { border-bottom-color: var(--color-graphite); padding: 16px 12px; }
     th { background: transparent; color: var(--color-fog); font-size: 13px; letter-spacing: -.01em; text-transform: none; }
     td { color: var(--color-bone); }
     tr:hover td { background: var(--surface-panel); }
     td.title-cell { color: var(--color-paper-white); font-size: 15px; font-weight: 500; line-height: 1.4; max-width: 520px; overflow-wrap: anywhere; }
     .tag-source { color: var(--color-silver); font-size: 13px; font-weight: 500; letter-spacing: .02em; }
-    .tag-status { align-items: center; color: var(--color-copper); display: inline-flex; font-size: 12px; font-weight: 500; gap: 6px; }
+    .tag-status { color: var(--color-copper); font-size: 12px; font-weight: 500; white-space: nowrap; }
     .tag-status::before { background: currentColor; border-radius: 50%; content: ""; height: 6px; width: 6px; }
     .tag-status.encerrado { color: var(--color-mist); }
     .tag-analysis { border: 1px solid var(--color-copper); border-radius: var(--radius-full); color: var(--color-copper); display: inline-flex; font-size: 11px; font-weight: 600; margin-left: 2px; padding: 2px 8px; }
