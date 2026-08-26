@@ -209,6 +209,16 @@
     .analysis-progress { border-left: 2px solid var(--color-copper); color: var(--color-mist); padding: 16px; }
     .md-title, .md-sub, .modal-text-box h3, .modal-text-box h4 { color: var(--color-copper); }
     .modal-text-box a, .analysis-section a { color: var(--color-copper); }
+    .source-picker { min-width: 0; position: relative; }
+    .source-picker-native { height: 1px; opacity: 0; overflow: hidden; pointer-events: none; position: absolute; width: 1px; }
+    .source-picker-trigger { align-items: center; background: var(--surface-panel); border: 1px solid var(--color-slate); border-radius: var(--radius-full); color: var(--color-bone); cursor: pointer; display: flex; font: 400 14px var(--font-inter); justify-content: space-between; min-height: 44px; padding: 10px 14px; text-align: left; width: 100%; }
+    .source-picker-trigger:hover, .source-picker-trigger[aria-expanded="true"] { border-color: var(--color-paper-white); }
+    .source-picker-trigger::after { border-bottom: 1px solid var(--color-steel); border-right: 1px solid var(--color-steel); content: ""; height: 7px; margin-left: 12px; transform: rotate(45deg) translateY(-2px); width: 7px; }
+    .source-picker-menu { backdrop-filter: blur(12px); background: rgba(18, 19, 23, .94); border: 1px solid var(--color-slate); border-radius: var(--radius-sm); box-shadow: var(--shadow-subtle); display: grid; gap: 2px; left: 0; max-height: 280px; overflow-y: auto; padding: 6px; position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; }
+    .source-picker-menu[hidden] { display: none; }
+    .source-picker-option { background: transparent; border: 0; border-radius: var(--radius-sm); color: var(--color-bone); cursor: pointer; font: 400 14px var(--font-inter); min-height: 44px; padding: 10px 12px; text-align: left; width: 100%; }
+    .source-picker-option:hover, .source-picker-option:focus-visible { background: var(--surface-floating); color: var(--color-paper-white); outline: none; }
+    .source-picker-option[aria-selected="true"] { color: var(--color-copper); font-weight: 600; }
     @media (max-width: 1024px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .btn-search { width: 100%; } }
     @media (max-width: 768px) { main { width: min(100% - 32px, var(--page-max-width)); padding-top: 32px; } .header { margin-bottom: 24px; } .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 20px; } .modal-overlay { padding: 12px; } .modal-card { max-height: 94vh; } .modal-body { max-height: calc(94vh - 145px); padding: 20px; } }
     @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } }
@@ -236,7 +246,11 @@
         </select>
       </label>
       <label>Fonte
-        <select id="fonte"><option value="">Todas as fontes</option></select>
+        <div class="source-picker" data-source-picker>
+          <select id="fonte" class="source-picker-native" aria-hidden="true" tabindex="-1"><option value="">Todas as fontes</option></select>
+          <button id="sourcePickerTrigger" class="source-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="sourcePickerOptions"><span id="sourcePickerLabel">Todas as fontes</span></button>
+          <div id="sourcePickerOptions" class="source-picker-menu" role="listbox" aria-label="Fontes disponíveis" hidden></div>
+        </div>
       </label>
       <label>Data mínima de fechamento
         <input id="dataInicio" type="date">
@@ -442,11 +456,22 @@
     const select = $("fonte");
     const current = select.value;
     select.replaceChildren(new Option("Todas as fontes", ""));
+    const sourceOptions = $("sourcePickerOptions");
+    if (sourceOptions) sourceOptions.replaceChildren();
     const container = $("sourcesList");
     if (container) container.replaceChildren();
 
     for (const src of sources) {
       select.append(new Option(src.toUpperCase(), src));
+      if (sourceOptions) {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "source-picker-option";
+        option.setAttribute("role", "option");
+        option.dataset.value = src;
+        option.textContent = src.toUpperCase();
+        sourceOptions.append(option);
+      }
       if (!container) continue;
       const tag = document.createElement("span");
       tag.className = "source-tag";
@@ -454,8 +479,57 @@
       container.append(tag);
     }
     if (sources.includes(current)) select.value = current;
+    syncSourcePicker();
     if (container && !container.childNodes.length) container.textContent = "Nenhuma fonte registrada.";
   }
+
+  const sourcePickerTrigger = $("sourcePickerTrigger");
+  const sourcePickerOptions = $("sourcePickerOptions");
+  const sourcePickerLabel = $("sourcePickerLabel");
+  function syncSourcePicker() {
+    const value = $("fonte").value;
+    const selected = $("fonte").selectedOptions[0]?.textContent || "Todas as fontes";
+    if (sourcePickerLabel) sourcePickerLabel.textContent = selected;
+    sourcePickerOptions?.querySelectorAll("[role=option]").forEach((option) => {
+      option.setAttribute("aria-selected", String(option.dataset.value === value));
+    });
+  }
+  function closeSourcePicker() {
+    if (!sourcePickerOptions || !sourcePickerTrigger) return;
+    sourcePickerOptions.hidden = true;
+    sourcePickerTrigger.setAttribute("aria-expanded", "false");
+  }
+  function openSourcePicker() {
+    if (!sourcePickerOptions || !sourcePickerTrigger) return;
+    sourcePickerOptions.hidden = false;
+    sourcePickerTrigger.setAttribute("aria-expanded", "true");
+    const selected = sourcePickerOptions.querySelector('[aria-selected="true"]') || sourcePickerOptions.querySelector("[role=option]");
+    selected?.focus();
+  }
+  sourcePickerTrigger?.addEventListener("click", () => {
+    if (sourcePickerOptions?.hidden) openSourcePicker(); else closeSourcePicker();
+  });
+  sourcePickerOptions?.addEventListener("click", (event) => {
+    const option = event.target.closest("[role=option]");
+    if (!option) return;
+    $("fonte").value = option.dataset.value || "";
+    syncSourcePicker();
+    closeSourcePicker();
+    sourcePickerTrigger.focus();
+  });
+  sourcePickerOptions?.addEventListener("keydown", (event) => {
+    const options = [...sourcePickerOptions.querySelectorAll("[role=option]")];
+    const index = options.indexOf(document.activeElement);
+    if (event.key === "Escape") { event.preventDefault(); closeSourcePicker(); sourcePickerTrigger?.focus(); }
+    if (event.key === "ArrowDown") { event.preventDefault(); options[Math.min(index + 1, options.length - 1)]?.focus(); }
+    if (event.key === "ArrowUp") { event.preventDefault(); options[Math.max(index - 1, 0)]?.focus(); }
+    if (event.key === "Home") { event.preventDefault(); options[0]?.focus(); }
+    if (event.key === "End") { event.preventDefault(); options.at(-1)?.focus(); }
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); document.activeElement?.click(); }
+  });
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-source-picker]")) closeSourcePicker();
+  });
 
   // Modal Control
   const modalOverlay = $("modalOverlay");
