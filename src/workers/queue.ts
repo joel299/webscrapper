@@ -17,7 +17,16 @@ export async function enqueueScraperRun(fonte: string) {
 }
 
 export async function enqueueAnalysis(analysisId: string) {
-  return analysisQueue.add("analysis", { analysisId }, { jobId: `analysis-${analysisId}`, removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
+  const jobId = `analysis-${analysisId}`;
+  const existing = await analysisQueue.getJob(jobId);
+  if (existing) {
+    const state = await existing.getState();
+    if (["waiting", "active", "delayed", "prioritized", "paused"].includes(state)) {
+      return existing;
+    }
+    await existing.remove();
+  }
+  return analysisQueue.add("analysis", { analysisId }, { jobId, removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
 }
 
 export async function getAnalysisJobStatus(id: string) {
