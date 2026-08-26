@@ -181,7 +181,7 @@
     .modal-overlay.active { display: flex; opacity: 1; }
     .modal-card { background: var(--surface-card); border: 1px solid var(--color-slate); border-radius: var(--radius-lg); box-shadow: none; max-height: min(88vh, 900px); max-width: 820px; overflow: hidden; transform: translateY(8px); transition: transform .18s ease; width: 100%; }
     .modal-overlay.active .modal-card { transform: translateY(0); }
-    .analysis-card { max-width: 920px; }
+    .analysis-card { max-width: 960px; }
     .modal-header { align-items: flex-start; background: var(--surface-card); border-bottom: 1px solid var(--color-graphite); display: flex; gap: 16px; padding: 24px; }
     .modal-title { color: var(--color-paper-white); font-family: var(--font-ivy-presto); font-size: 28px; font-weight: 400; letter-spacing: .01em; line-height: 1.15; margin: 0 0 12px; overflow-wrap: anywhere; }
     .modal-sub { color: var(--color-fog); display: flex; flex-wrap: wrap; font-size: 13px; gap: 12px 20px; }
@@ -216,6 +216,26 @@
     .analysis-v2-section h3::before { background: currentColor; border-radius: 50%; content: ""; flex: 0 0 6px; height: 6px; }
     .analysis-verdict { border: 1px solid var(--color-copper); border-radius: var(--radius-sm); padding: 16px; }
     .analysis-verdict strong { color: var(--color-paper-white); font-weight: 600; }
+    .editorial-section h4 { color: var(--color-bone); font-size: 13px; font-weight: 600; margin: 22px 0 8px; }
+    .analysis-kicker, .analysis-decision { color: var(--color-paper-white); font-size: 17px; font-weight: 500; }
+    .analysis-list { display: grid; gap: 9px; margin: 8px 0 0; padding-left: 20px; }
+    .analysis-list li { padding-left: 4px; }
+    .analysis-list li strong { color: var(--color-paper-white); display: block; }
+    .analysis-note { color: var(--color-ash); display: block; font-size: 13px; margin-top: 5px; }
+    .analysis-checklist { list-style: none; margin: 0; padding: 0; }
+    .analysis-checklist li { align-items: flex-start; border-bottom: 1px solid var(--color-graphite); display: grid; gap: 12px; grid-template-columns: 20px 1fr auto; padding: 15px 0; }
+    .analysis-checklist li:last-child { border-bottom: 0; }
+    .check-indicator { align-items: center; border: 1px solid var(--color-steel); border-radius: 50%; color: var(--color-copper); display: inline-flex; height: 18px; justify-content: center; margin-top: 2px; width: 18px; }
+    .check-indicator.checked { border-color: var(--color-copper); }
+    .check-content strong { color: var(--color-paper-white); display: block; font-weight: 500; }
+    .check-content p { color: var(--color-fog); margin: 5px 0 0; }
+    .check-type { color: var(--color-fog); font-size: 11px; letter-spacing: .03em; margin-top: 3px; white-space: nowrap; }
+    .check-type--obrigatorio { color: var(--color-copper); }
+    .analysis-steps { display: grid; gap: 17px; margin: 0; padding-left: 24px; }
+    .analysis-steps li { padding-left: 5px; }
+    .analysis-steps strong { color: var(--color-paper-white); display: block; }
+    .analysis-incomplete { align-items: center; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0; }
+    .analysis-incomplete strong { color: var(--color-bone); }
     .md-title, .md-sub, .modal-text-box h3, .modal-text-box h4 { color: var(--color-copper); }
     .modal-text-box a, .analysis-section a { color: var(--color-copper); }
     .source-picker { min-width: 0; position: relative; }
@@ -230,7 +250,7 @@
     .source-picker-option[aria-selected="true"] { color: var(--color-copper); font-weight: 600; }
     @media (max-width: 1024px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .btn-search { width: 100%; } }
     @media (max-width: 768px) { main { width: min(100% - 32px, var(--page-max-width)); padding-top: 32px; } .header { margin-bottom: 24px; } .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 20px; } .modal-overlay { padding: 12px; } .modal-card { max-height: 94vh; } .modal-body { max-height: calc(94vh - 145px); padding: 20px; } }
-    @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } }
+    @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } .analysis-checklist li { grid-template-columns: 20px 1fr; } .check-type { grid-column: 2; margin-top: -4px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
   </style>
 </head>
@@ -552,104 +572,36 @@
   }
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
-  function prettyLabel(key) {
-    return String(key).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-  }
-  // Remove metadados internos (fonte=descricao/periodo) que não devem aparecer ao usuário.
-  function sanitizeAnalysisItem(value) {
-    if (Array.isArray(value)) return value.map(sanitizeAnalysisItem);
-    if (value && typeof value === "object") {
-      const out = {};
-      for (const [k, v] of Object.entries(value)) {
-        if (k === "fonte") continue;
-        out[k] = sanitizeAnalysisItem(v);
-      }
-      return out;
-    }
-    return value;
-  }
-  function renderStructured(value) {
-    if (value === null || value === undefined || value === "") return "Não identificado";
-    if (Array.isArray(value)) {
-      return `<ul>${value.map(item => `<li>${renderStructured(sanitizeAnalysisItem(item))}</li>`).join("")}</ul>`;
-    }
-    if (typeof value === "object") {
-      const clean = sanitizeAnalysisItem(value);
-      return `<dl class="analysis-dl">${Object.entries(clean).map(([key, item]) => `<div><dt>${esc(prettyLabel(key))}</dt><dd>${renderStructured(item)}</dd></div>`).join("")}</dl>`;
-    }
-    return esc(String(value));
-  }
-  function analysisList(title, values) {
-    if (!Array.isArray(values) || !values.length) return "";
-    return `<section class="analysis-section"><h3>${esc(title)}</h3>${renderStructured(values)}</section>`;
-  }
-  function renderRequisitos(list) {
-    if (!Array.isArray(list) || !list.length) return "";
-    const itemsHtml = list.map(item => {
-      if (typeof item === "string") return `<li>${esc(item)}</li>`;
-      if (typeof item === "object" && item !== null) {
-        const req = item.requisito || item.nome || item.titulo || "";
-        const ev = item.evidencia || item.descricao || item.texto || "";
-        if (req && ev) {
-          return `<li><strong>${esc(req)}:</strong> ${esc(ev)}</li>`;
-        } else if (req) {
-          return `<li><strong>${esc(req)}</strong></li>`;
-        } else if (ev) {
-          return `<li>${esc(ev)}</li>`;
-        }
-      }
-      return `<li>${renderStructured(sanitizeAnalysisItem(item))}</li>`;
-    }).join("");
-    return `<section class="analysis-section"><h3>Requisitos obrigatórios (quem pode participar)</h3><ul>${itemsHtml}</ul></section>`;
-  }
-  function renderAnalysis(result) {
-    const r = result || {};
-    const base = r.base_projeto_sugerida || {};
-    const decisao = r.decisao || {};
-    return [
-      r.resumo ? `<section class="analysis-section"><h3>Resumo da oportunidade</h3>${renderStructured(r.resumo)}</section>` : "",
-      renderRequisitos(r.requisitos_obrigatorios),
-      analysisList("Documentos necessários", r.documentos_necessarios),
-      analysisList("Critérios de avaliação", r.criterios_avaliacao),
-      analysisList("Pontos de atenção", r.pontos_atencao),
-      Object.keys(decisao).length ? `<section class="analysis-section"><h3>Decisão recomendada</h3>${renderStructured(decisao)}</section>` : "",
-      Object.keys(base).length ? `<section class="analysis-section"><h3>Base de projeto sugerida</h3>${renderStructured(base)}</section>` : "",
-      analysisList("Checklist de submissão", r.checklist)
-    ].join("") || `<p class="analysis-muted">A análise não retornou dados estruturados.</p>`;
-  }
-  function analysisV2Section(title, value, tone = "") {
-    const empty = value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length);
-    return `<section class="analysis-section analysis-v2-section ${empty ? "unknown" : tone}"><h3>${esc(title)}</h3>${empty ? `<p class="analysis-muted">Não localizado no material analisado.</p>` : renderStructured(value)}</section>`;
-  }
-  function renderAnalysisV2(result) {
-    const r = result || {};
-    const meta = r.meta || {};
-    const verdict = r.veredito || {};
-    const proposal = r.proposta_recomendada || {};
-    const plan = r.plano_execucao || {};
-    return [
-      `<section class="analysis-section analysis-v2-section ${verdict.status === "NAO_APTO" ? "critical" : "confirmed"}"><h3>Veredito rápido</h3><div class="analysis-verdict"><strong>${esc(verdict.status || "DADOS_INSUFICIENTES")}</strong> · ${esc(verdict.prioridade || "nao_determinada")}<p>${esc(verdict.justificativa || "não localizado no material analisado")}</p></div>${renderStructured({ tipo_oportunidade: meta.tipo_oportunidade, confianca_classificacao: meta.confianca_classificacao, qualidade_dados: meta.qualidade_dados })}</section>`,
-      analysisV2Section("Resumo da oportunidade", r.resumo_oportunidade, "confirmed"),
-      analysisV2Section("Elegibilidade", r.elegibilidade, "confirmed"),
-      analysisV2Section("Exigências e documentos", { documentos: r.elegibilidade?.documentos, restricoes: r.elegibilidade?.restricoes }, "confirmed"),
-      analysisV2Section("Critérios e riscos", r.avaliacao, "critical"),
-      analysisV2Section("Projeto, solução ou plano recomendado", proposal, proposal.aplicavel === false ? "unknown" : "inference"),
-      analysisV2Section("Cronograma e orçamento", { cronograma: plan.cronograma, orcamento: plan.orcamento }, "inference"),
-      analysisV2Section("Indicadores e entregáveis", { indicadores: plan.indicadores, entregaveis: proposal.entregaveis }, "inference"),
-      analysisV2Section("Plano de ação", r.plano_acao, "inference"),
-      analysisV2Section("Checklist de submissão", r.checklist, "confirmed"),
-      analysisV2Section("Informações que ainda precisam ser confirmadas", { lacunas: r.avaliacao?.lacunas, perguntas_criticas: r.perguntas_criticas, alertas_dados: meta.alertas_dados, validacoes_pendentes: verdict.validacoes_pendentes }, "unknown"),
-      r.aviso ? `<p class="analysis-muted">${esc(r.aviso)}</p>` : ""
-    ].join("");
-  }
+  const analysisTypeLabels = { contratacao_publica: "Contratação pública", financiamento_de_projeto: "Financiamento de projeto", premio_ou_concurso: "Prêmio ou concurso", beneficio_individual: "Benefício ou pagamento individual", credenciamento: "Credenciamento", patrocinio: "Patrocínio", oportunidade_continua: "Oportunidade contínua", conteudo_informativo: "Conteúdo informativo", outro: "Outra oportunidade" };
+  const checklistTypeLabels = { obrigatorio: "Obrigatório", recomendado: "Recomendado", confirmar: "Confirmar" };
+  function humanType(value) { return analysisTypeLabels[value] || value || "Tipo não localizado"; }
+  function text(value, fallback = "Não localizado no material analisado.") { return value === null || value === undefined || String(value).trim() === "" ? `<p class="analysis-muted">${esc(fallback)}</p>` : `<p>${esc(String(value))}</p>`; }
+  function paragraphs(values) { return Array.isArray(values) && values.length ? values.map(value => text(value)).join("") : text(null); }
+  function bullets(values) { return Array.isArray(values) && values.length ? `<ul class="analysis-list">${values.map(value => `<li>${esc(String(value))}</li>`).join("")}</ul>` : text(null); }
+  function section(title, body, tone = "") { return `<section class="analysis-section editorial-section ${tone}"><h3>${esc(title)}</h3>${body}</section>`; }
+  function requirementList(items) { return Array.isArray(items) && items.length ? `<ul class="analysis-list">${items.map(item => `<li><strong>${esc(item.titulo || "Requisito")}</strong>${text(item.descricao || null)}${item.confirmado === false ? `<span class="analysis-note">Precisa ser confirmado no material oficial.</span>` : ""}</li>`).join("")}</ul>` : text(null); }
+  function requirements(items) { return Array.isArray(items) && items.length ? `<ul class="analysis-list">${items.map(item => `<li>${esc(String(item))}</li>`).join("")}</ul>` : text(null); }
+  function checklist(items) { return Array.isArray(items) && items.length ? `<ul class="analysis-checklist">${items.map(item => `<li><span class="check-indicator ${item.concluido ? "checked" : ""}" aria-hidden="true">${item.concluido ? "✓" : ""}</span><div class="check-content"><strong>${esc(item.texto || "Ação de submissão")}</strong>${item.observacao ? `<p>${esc(item.observacao)}</p>` : ""}</div><span class="check-type check-type--${esc(item.tipo || "confirmar")}">${esc(checklistTypeLabels[item.tipo] || "Confirmar")}</span></li>`).join("")}</ul>` : text(null); }
+  function execution(items) { return Array.isArray(items) && items.length ? `<ol class="analysis-steps">${items.map(item => `<li><strong>${esc(item.titulo || "Etapa")}</strong>${text(item.descricao || null)}${item.prazo ? `<span class="analysis-note">Prazo: ${esc(item.prazo)}</span>` : ""}</li>`).join("")}</ol>` : text(null); }
+  function ExecutiveSummary(r) { const c = r.classificacao || {}, s = r.resumo_executivo || {}; return section("Resumo da oportunidade", `<p class="analysis-kicker">${esc(s.titulo || "Oportunidade analisada")}</p><p>${esc(humanType(c.tipo))}${c.subtipo ? ` · ${esc(c.subtipo)}` : ""}</p>${text(c.explicacao)}${paragraphs(s.paragrafos)}`, "confirmed"); }
+  function StrategicAnalysis(r) { const s = r.analise_estrategica || {}; return section("Leitura estratégica", `${paragraphs(s.paragrafos)}<h4>Oportunidades</h4>${bullets(s.oportunidades)}<h4>Limitações</h4>${bullets(s.limitacoes)}`, "inference"); }
+  function EligibilitySection(r) { const e = r.elegibilidade || {}; return section("Quem pode participar", `${text(e.explicacao)}${requirementList(e.requisitos)}`, "confirmed"); }
+  function RequirementsSection(r) { const e = r.exigencias || {}; return section("Exigências e pontos de atenção", `<h4>Documentos</h4>${requirements(e.documentos)}<h4>Prazos</h4>${requirements(e.prazos)}<h4>Critérios</h4>${requirements(e.criterios)}<h4>Pontos de atenção</h4>${requirements(e.pontos_atencao)}`, "critical"); }
+  function RecommendationSection(r) { const d = r.recomendacao || {}; return section("Recomendação", `<p class="analysis-decision">${esc(d.decisao || "Decisão ainda não determinada")}</p>${text(d.justificativa)}<h4>Condições para avançar</h4>${bullets(d.condicoes)}`, "confirmed"); }
+  function SuggestedProposalSection(r) { const d = r.entrega_recomendada || {}; return section("Estratégia ou projeto sugerido", `<p class="analysis-kicker">${esc(d.titulo || "Entrega recomendada")}</p><p>${esc(d.tipo || "")}</p>${text(d.conceito)}${text(d.justificativa)}<h4>Objetivos</h4>${bullets([d.objetivo, ...(d.objetivos_especificos || [])].filter(Boolean))}<h4>Metodologia e atividades</h4>${bullets([...(d.metodologia || []), ...(d.atividades || [])])}<h4>Entregáveis, diferenciais e indicadores</h4>${bullets([...(d.entregaveis || []), ...(d.diferenciais || []), ...(d.indicadores || [])])}`, "inference"); }
+  function ExecutionPlanSection(r) { const p = r.plano_execucao || {}; return section("Plano de execução", `${execution(p.etapas)}<h4>Orçamento</h4>${text(p.orcamento?.explicacao)}${bullets(p.orcamento?.categorias)}`, "inference"); }
+  function SubmissionChecklist(r) { return section("Checklist de submissão", checklist(r.checklist), "confirmed"); }
+  function PendingInformationSection(r) { return section("Informações que precisam ser confirmadas", bullets(r.informacoes_pendentes), "unknown"); }
+  function renderAnalysisV3(r) { return [ExecutiveSummary(r), StrategicAnalysis(r), EligibilitySection(r), RequirementsSection(r), RecommendationSection(r), SuggestedProposalSection(r), ExecutionPlanSection(r), SubmissionChecklist(r), PendingInformationSection(r)].join(""); }
+  function invalidAnalysisMessage() { return `<div class="analysis-incomplete"><strong>Não foi possível concluir a análise completa.</strong><button class="btn-link" type="button" onclick="requestAnalysis()">Tentar novamente</button></div>`; }
   async function requestAnalysis() {
     if (!activeItem?.id) return;
     analysisOverlay.classList.add("active"); analysisOverlay.setAttribute("aria-hidden", "false");
     $("analysisTitle").textContent = `Análise: ${activeItem.titulo || "Edital"}`;
     $("analysisBody").innerHTML = `<div class="analysis-progress">Analisando edital, anexos e evidências. Esta janela será atualizada automaticamente.</div>`;
     const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) }).catch(e => ({ error: e.message }));
-    if (started.error) { $("analysisStatus").textContent = started.error; return; }
-    if (started.resultado) { $("analysisStatus").textContent = started.cached ? "Análise reutilizada" : "Concluída"; $("analysisBody").innerHTML = started.resultado.meta ? renderAnalysisV2(started.resultado) : renderAnalysis(started.resultado); return; }
+    if (started.error) { $("analysisStatus").textContent = started.error; $("analysisBody").innerHTML = invalidAnalysisMessage(); return; }
+    if (started.resultado) { $("analysisStatus").textContent = started.cached ? "Análise reutilizada" : "Concluída"; $("analysisBody").innerHTML = started.resultado.classificacao ? renderAnalysisV3(started.resultado) : invalidAnalysisMessage(); return; }
     $("analysisStatus").textContent = "Em processamento";
     let tries = 0;
     if (analysisTimer) clearInterval(analysisTimer);
@@ -664,7 +616,7 @@
           const current = latest?.analyses?.find((x) => ["queued", "running", "completed"].includes(x.status));
           if (current?.status === "completed") {
             $("analysisStatus").textContent = "Concluída";
-            $("analysisBody").innerHTML = renderAnalysis(current.resultado);
+            $("analysisBody").innerHTML = current.resultado?.classificacao ? renderAnalysisV3(current.resultado) : invalidAnalysisMessage();
           } else if (current) {
             $("analysisBody").innerHTML = `<div class="analysis-progress">A análise foi reenfileirada e continua sendo processada em segundo plano.</div>`;
           }
@@ -672,8 +624,8 @@
         return null;
       });
       if (!data) return;
-      if (data.status === "completed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = data.resultado?.meta ? renderAnalysisV2(data.resultado) : renderAnalysis(data.resultado); }
-      else if (data.status === "failed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
+      if (data.status === "completed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = data.resultado?.classificacao ? "Concluída" : "Análise incompleta"; $("analysisBody").innerHTML = data.resultado?.classificacao ? renderAnalysisV3(data.resultado) : invalidAnalysisMessage(); }
+      else if (data.status === "failed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Análise incompleta"; $("analysisBody").innerHTML = invalidAnalysisMessage(); }
       if (tries > 720) { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Processamento em segundo plano"; $("analysisBody").innerHTML = `<div class="analysis-progress">A análise continua sendo processada em segundo plano devido à fila de proteção do OmniRoute. Reabra este edital para consultar o resultado.</div>`; }
     }, 2500);
   }

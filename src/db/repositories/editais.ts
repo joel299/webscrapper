@@ -131,7 +131,7 @@ export async function getEditalById(id: string) {
   );
 
   const arquivos = await pool.query(
-    "SELECT id, tipo, url, titulo, texto_extraido FROM editais_arquivos WHERE edital_id = $1 ORDER BY criado_em",
+    "SELECT id, tipo, url, titulo FROM editais_arquivos WHERE edital_id = $1 ORDER BY criado_em",
     [id]
   );
 
