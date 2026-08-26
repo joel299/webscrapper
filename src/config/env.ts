@@ -8,7 +8,7 @@ import { z } from "zod";
 config({ path: join(process.env.HERMES_HOME ?? join(homedir(), ".hermes"), ".env") });
 config();
 
-const envSchema = z.object({
+export const envSchema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().default(3000),
   BASIC_AUTH_USER: z.string().default("admin"),
@@ -28,7 +28,9 @@ const envSchema = z.object({
   LLM_EMBEDDINGS_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/embeddings"),
   LLM_RESPONSES_URL: z.string().default("https://omnirouter.iainfinito.com.br/v1/responses"),
   LLM_API_KEY: z.string().default(""),
-  LLM_MODEL: z.string().default("auto/best-coding")
+  LLM_MODEL: z.string().default("antigravity/gemini-3.6-flash-high"),
+  ANALYSIS_RATE_LIMIT_MAX: z.coerce.number().int().default(10),
+  ANALYSIS_RATE_LIMIT_DURATION_MS: z.coerce.number().int().default(60000)
 });
 
 export const env = envSchema.parse(process.env);

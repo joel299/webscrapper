@@ -29,7 +29,14 @@ new Worker(
   async (job) => {
     if (job.name === "analysis") await runAnalysis(job.data.analysisId);
   },
-  { connection, concurrency: 1 }
+  {
+    connection,
+    concurrency: 1,
+    limiter: {
+      max: env.ANALYSIS_RATE_LIMIT_MAX,
+      duration: env.ANALYSIS_RATE_LIMIT_DURATION_MS
+    }
+  }
 );
 
 const automaticJobOptions = {

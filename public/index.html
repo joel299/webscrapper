@@ -345,7 +345,11 @@
   const modalOverlay = $("modalOverlay");
   const analysisOverlay = $("analysisOverlay");
   let activeItem = null;
-  function closeAnalysis() { analysisOverlay.classList.remove("active"); analysisOverlay.setAttribute("aria-hidden", "true"); }
+  let analysisTimer = null;
+  function closeAnalysis() {
+    if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
+    analysisOverlay.classList.remove("active"); analysisOverlay.setAttribute("aria-hidden", "true");
+  }
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
   function prettyLabel(key) {
@@ -418,16 +422,18 @@
     analysisOverlay.classList.add("active"); analysisOverlay.setAttribute("aria-hidden", "false");
     $("analysisTitle").textContent = `Análise: ${activeItem.titulo || "Edital"}`;
     $("analysisBody").innerHTML = `<div class="analysis-progress">Analisando edital, anexos e evidências. Esta janela será atualizada automaticamente.</div>`;
-    const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(e => ({ error: e.message }));
+    const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) }).catch(e => ({ error: e.message }));
     if (started.error) { $("analysisStatus").textContent = started.error; return; }
-    if (started.cached && started.resultado) { $("analysisStatus").textContent = "Análise reutilizada"; $("analysisBody").innerHTML = renderAnalysis(started.resultado); return; }
+    if (started.resultado) { $("analysisStatus").textContent = started.cached ? "Análise reutilizada" : "Concluída"; $("analysisBody").innerHTML = renderAnalysis(started.resultado); return; }
     $("analysisStatus").textContent = "Em processamento";
     let tries = 0;
-    const timer = setInterval(async () => {
+    if (analysisTimer) clearInterval(analysisTimer);
+    analysisTimer = setInterval(async () => {
       tries++;
       const data = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis/${started.analysis_id}`).catch(async (error) => {
         if (String(error?.message || "").includes("404")) {
-          clearInterval(timer);
+          clearInterval(analysisTimer);
+          analysisTimer = null;
           $("analysisStatus").textContent = "Análise atualizada em segundo plano";
           const latest = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`).catch(() => null);
           const current = latest?.analyses?.find((x) => ["queued", "running", "completed"].includes(x.status));
@@ -441,9 +447,9 @@
         return null;
       });
       if (!data) return;
-      if (data.status === "completed") { clearInterval(timer); $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = renderAnalysis(data.resultado); }
-      else if (data.status === "failed") { clearInterval(timer); $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
-      if (tries > 120) { clearInterval(timer); $("analysisStatus").textContent = "Processamento em segundo plano"; }
+      if (data.status === "completed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = renderAnalysis(data.resultado); }
+      else if (data.status === "failed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
+      if (tries > 720) { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Processamento em segundo plano"; $("analysisBody").innerHTML = `<div class="analysis-progress">A análise continua sendo processada em segundo plano devido à fila de proteção do OmniRoute. Reabra este edital para consultar o resultado.</div>`; }
     }, 2500);
   }
   $("analyzeBtn").onclick = requestAnalysis;
@@ -636,9 +642,9 @@
 
   function queueVisibleAnalyses(items) {
     if (!Array.isArray(items)) return;
-    // Dispara em segundo plano; a busca e a tabela não aguardam a LLM.
+    // Dispara em segundo plano com JSON body válido; a busca e a tabela não aguardam a LLM.
     items.slice(0, 20).forEach((item) => {
-      if (item?.id) fetch(`${API_BASE}/api/editais/${item.id}/analysis`, { method: "POST" }).catch(() => {});
+      if (item?.id) fetch(`${API_BASE}/api/editais/${item.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
     });
   }
 

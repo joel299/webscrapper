@@ -94,6 +94,7 @@ export async function upsertAnalysisToSupabase(payload: {
   resultado: unknown;
   expira_em: string;
 }): Promise<boolean> {
+  if (!env.SUPABASE_ANON_KEY) return false;
   try {
     const res = await fetch(`${base()}/rest/v1/edital_analises`, {
       method: "POST",

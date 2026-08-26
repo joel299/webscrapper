@@ -25,7 +25,7 @@ const FONTE_NOME: Record<string, string> = {
   comprasgov: "Compras.gov.br"
 };
 
-export async function requestAnalysis(editalId: string, tipo = "aderencia") {
+export async function requestAnalysis(editalId: string, tipo = "aderencia", force = false) {
   const edital = await getEditalById(editalId);
   if (!edital) throw new Error("Edital não encontrado");
   const key = cacheKey(edital);
@@ -34,19 +34,20 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [key]);
     
-    // 1. Busca primeiro se JÁ EXISTE qualquer análise concluída para este edital (nunca perde análise pronta)
+    // 1. O fluxo automático reutiliza análises concluídas. A ação manual pode
+    // forçar uma nova execução, inclusive quando o edital já tem resultado.
     const completed = await client.query(
       `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND status='completed' ORDER BY criado_em DESC LIMIT 1`,
       [editalId, tipo]
     );
-    if (completed.rowCount) {
+    if (completed.rowCount && !force) {
       await client.query("COMMIT");
       return { analysis: completed.rows[0], cached: true };
     }
 
-    // 2. Busca se há análise em andamento ou na fila
+    // 2. Busca se há análise em andamento ou na fila QUE NÃO SEJA STALE (criada há menos de 10 min)
     const pending = await client.query(
-      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND status IN ('running', 'queued') AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
+      `SELECT * FROM edital_analises WHERE edital_id=$1 AND tipo=$2 AND status IN ('running', 'queued') AND atualizado_em > now() - interval '10 minutes' AND expira_em > now() ORDER BY criado_em DESC LIMIT 1`,
       [editalId, tipo]
     );
     if (pending.rowCount) {
@@ -54,7 +55,7 @@ export async function requestAnalysis(editalId: string, tipo = "aderencia") {
       return { analysis: pending.rows[0], cached: true };
     }
 
-    // 3. Insere nova análise ou atualiza existente em caso de re-tentativa (evita erro 400 de constraint unique)
+    // 3. Insere nova análise ou atualiza existente travada/antiga
     const inserted = await client.query(
       `INSERT INTO edital_analises (edital_id,tipo,status,provider,modelo,prompt_version,cache_key)
        VALUES ($1,$2,'queued','omniroute',$3,$4,$5)
@@ -134,7 +135,7 @@ export async function runAnalysis(analysisId: string) {
   const analysis = row.rows[0];
   const edital = await getEditalById(analysis.edital_id);
   if (!edital) throw new Error("Edital não encontrado");
-  await pool.query("UPDATE edital_analises SET status='running', atualizado_em=now() WHERE id=$1", [analysisId]);
+  await pool.query("UPDATE edital_analises SET status='running', modelo=$1, atualizado_em=now() WHERE id=$2", [env.LLM_MODEL, analysisId]);
 
   const source = await buildAnalysisContext(edital);
   try {
@@ -178,18 +179,16 @@ export async function runAnalysis(analysisId: string) {
 export async function enqueuePendingAnalyses(limit = 50) {
   const rows = await pool.query(
     `SELECT e.id FROM editais e
-     WHERE NOT EXISTS (
-       SELECT 1 FROM edital_analises a
-       WHERE a.edital_id=e.id AND a.tipo='aderencia'
-         AND a.status IN ('queued','running','completed') AND a.expira_em > now()
-     )
      ORDER BY e.criado_em DESC LIMIT $1`,
     [limit]
   );
   let queued = 0;
   for (const row of rows.rows) {
     const { analysis, cached } = await requestAnalysis(row.id, "aderencia");
-    if (!cached) { await enqueueAnalysis(analysis.id); queued++; }
+    if (!cached || analysis.status === "queued" || analysis.status === "failed") {
+      await enqueueAnalysis(analysis.id);
+      queued++;
+    }
   }
   return queued;
 }

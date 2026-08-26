@@ -1,10 +1,11 @@
 import { FastifyInstance } from "fastify";
 import { listEditais, listEditalSources, getEditalById } from "../../db/repositories/editais.js";
+import { pool } from "../../db/pool.js";
 import { availableSources } from "../../scrapers/run.js";
 import { fetchEditalDetail } from "../../scrapers/detail.js";
 import { formatEditalBody } from "../../utils/formatEdital.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
-import { requestAnalysis, listAnalyses, enqueuePendingAnalyses } from "../../analysis/editalAnalysis.js";
+import { requestAnalysis, listAnalyses } from "../../analysis/editalAnalysis.js";
 import { enqueueAnalysis } from "../../workers/queue.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
@@ -64,9 +65,7 @@ export async function editaisRoutes(app: FastifyInstance) {
       }
     }
   }, async (request) => {
-    const result = await listEditais(request.query as Record<string, unknown>);
-    void enqueuePendingAnalyses(100).catch((err) => app.log.warn({ err }, "Falha ao enfileirar análises pendentes"));
-    return result;
+    return listEditais(request.query as Record<string, unknown>);
   });
 
   app.get("/sources", {
@@ -110,8 +109,12 @@ export async function editaisRoutes(app: FastifyInstance) {
   app.post("/:id(^[-a-fA-F0-9]{36}$)/analysis", async (request, reply) => {
     const { id } = request.params as { id: string };
     try {
-      const { analysis, cached } = await requestAnalysis(id, "aderencia");
-      if (!cached) {
+      const body = (request.body ?? {}) as { force?: boolean };
+      const { analysis, cached } = await requestAnalysis(id, "aderencia", body.force === true);
+      if (analysis.status === "completed") {
+        return { analysis_id: analysis.id, status: "completed", cached: true, resultado: analysis.resultado };
+      }
+      if (!cached || analysis.status === "failed") {
         const job = await enqueueAnalysis(analysis.id);
         return reply.code(202).send({ analysis_id: analysis.id, job_id: job.id, status: "queued", cached: false });
       }
@@ -123,14 +126,30 @@ export async function editaisRoutes(app: FastifyInstance) {
 
   app.get("/:id(^[-a-fA-F0-9]{36}$)/analysis", async (request) => {
     const { id } = request.params as { id: string };
-    return { analyses: await listAnalyses(id) };
+    const rawAnalyses = await listAnalyses(id);
+    const analyses = rawAnalyses.map((a: any) => ({
+      ...a,
+      resultado: typeof a.resultado === "string" ? JSON.parse(a.resultado) : a.resultado
+    }));
+    return { analyses };
   });
 
   app.get("/:id(^[-a-fA-F0-9]{36}$)/analysis/:analysisId", async (request, reply) => {
     const { analysisId } = request.params as { analysisId: string };
     const rows = await listAnalyses((request.params as { id: string }).id);
-    const analysis = rows.find((x) => x.id === analysisId);
-    if (!analysis) return reply.code(404).send({ message: "Análise não encontrada" });
+    let analysis = rows.find((x) => x.id === analysisId);
+    if (!analysis) {
+      const byId = await pool.query("SELECT id,tipo,status,modelo,criado_em,atualizado_em,expira_em,resultado,erro FROM edital_analises WHERE id=$1", [analysisId]);
+      if (byId.rowCount) analysis = byId.rows[0];
+      else return reply.code(404).send({ message: "Análise não encontrada" });
+    }
+    if (analysis && typeof analysis.resultado === "string") {
+      try {
+        analysis.resultado = JSON.parse(analysis.resultado);
+      } catch {
+        // mantém como está caso falhe
+      }
+    }
     return analysis;
   });
 
