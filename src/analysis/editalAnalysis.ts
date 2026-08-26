@@ -69,6 +69,12 @@ function parseLlmJson(raw: string): unknown {
 function hasCompleteNarrative(value: AnalysisV3): boolean {
   return value.resumo_executivo.paragrafos.length >= 2 && value.analise_estrategica.paragrafos.length > 0 && Boolean(value.recomendacao.justificativa.trim()) && Boolean(value.entrega_recomendada.tipo.trim()) && Array.isArray(value.checklist);
 }
+function hasCompatibleDelivery(value: AnalysisV3): boolean {
+  if (value.classificacao.tipo !== "beneficio_individual") return true;
+  if (value.entrega_recomendada.tipo !== "plano_de_inscricao") return false;
+  const deliveryText = [value.entrega_recomendada.conceito, value.entrega_recomendada.publico, value.entrega_recomendada.objetivo, ...value.entrega_recomendada.objetivos_especificos, ...value.entrega_recomendada.metodologia, ...value.entrega_recomendada.atividades, ...value.entrega_recomendada.entregaveis, ...value.entrega_recomendada.diferenciais, ...value.entrega_recomendada.indicadores].join(" ").toLowerCase();
+  return !/(projeto futuro|implantação|implantacao|oficinas|execução territorial|execucao territorial|captação de recursos|captacao de recursos)/.test(deliveryText);
+}
 
 export async function requestAnalysis(editalId: string, tipo = "aderencia", force = false) {
   const edital = await getEditalById(editalId); if (!edital) throw new Error("Edital não encontrado");
@@ -97,10 +103,10 @@ export async function runAnalysis(analysisId: string) {
     const call = async (messages: Array<{ role: string; content: string }>) => { const response = await fetch(env.LLM_CHAT_URL, { method: "POST", headers, body: JSON.stringify({ model: env.LLM_MODEL, stream: false, temperature: 0.1, response_format: { type: "json_object" }, messages }), signal: AbortSignal.timeout(180000) }); if (!response.ok) throw new Error(`LLM HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`); const body = await response.json() as any; return body.choices?.[0]?.message?.content || ""; };
     const raw = await call([{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: source }]);
     let result: AnalysisV3;
-    try { result = AnalysisV3Schema.parse(parseLlmJson(raw)); if (!hasCompleteNarrative(result)) throw new Error("A resposta não contém a narrativa estratégica completa"); }
+    try { result = AnalysisV3Schema.parse(parseLlmJson(raw)); if (!hasCompleteNarrative(result)) throw new Error("A resposta não contém a narrativa estratégica completa"); if (!hasCompatibleDelivery(result)) throw new Error("A entrega recomendada não é compatível com a natureza individual do benefício"); }
     catch (firstError: any) {
       const retryRaw = await call([{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: source }, { role: "assistant", content: raw }, { role: "user", content: `Corrija a resposta uma única vez. Ela falhou na validação (${String(firstError?.message || firstError).slice(0, 500)}). Retorne o JSON completo com resumo de 2 ou 3 parágrafos, análise estratégica, elegibilidade, recomendação, entrega compatível, execução, checklist e pendências. Não escreva texto fora do JSON.` }]);
-      result = AnalysisV3Schema.parse(parseLlmJson(retryRaw)); if (!hasCompleteNarrative(result)) throw new Error("A análise não contém todas as seções narrativas obrigatórias");
+      result = AnalysisV3Schema.parse(parseLlmJson(retryRaw)); if (!hasCompleteNarrative(result)) throw new Error("A análise não contém todas as seções narrativas obrigatórias"); if (!hasCompatibleDelivery(result)) throw new Error("A entrega recomendada continua incompatível com benefício individual");
     }
     await pool.query("UPDATE edital_analises SET status='completed', resultado=$1, content_hash=$2, prompt_version=$3, data_analise=now(), atualizado_em=now() WHERE id=$4", [JSON.stringify(result), contentHash(material), PROMPT_VERSION, analysisId]);
     void upsertAnalysisToSupabase({ analysis_id: analysisId, edital_id: edital.id, edital_titulo: edital.titulo, fonte: edital.fonte, status: "completed", modelo: env.LLM_MODEL, resultado: result, expira_em: analysis.expira_em }).catch(() => {});
