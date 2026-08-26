@@ -93,17 +93,22 @@ async function extractDocumentText(filePath: string, mime: string, name: string)
 }
 
 async function downloadDocument(page: Page, frame: Frame, button: ReturnType<Frame["locator"]>, meta: { nome: string; tipo: string; data_publicacao: string }): Promise<EditalDocument> {
-  const dir = await mkdtemp(path.join(os.tmpdir(), "compras-br-doc-")); const filePath = path.join(dir, "document");
+  const dir = await mkdtemp(path.join(os.tmpdir(), "compras-br-doc-"));
   try {
-    let download: Download | null = null; let responseBody: Buffer | null = null;
+    let download: Download | null = null;
     try {
-      const responsePromise = page.waitForResponse((response) => response.url().includes("/licitacao/hal/public/arquivos") && response.status() === 200, { timeout: 30000 });
       [download] = await Promise.all([page.waitForEvent("download", { timeout: 30000 }), button.click()]);
-      const response = await responsePromise; responseBody = await response.body();
-    } catch { await button.click().catch(() => {}); }
+    } catch { /* falha individual registrada abaixo */ }
     if (!download) return { ...meta, url_origem: "", mime_type: "", tamanho_bytes: 0, sha256: "", status_download: "failed", texto_extraido: "", erro: "download não capturado" };
     const suggested = download.suggestedFilename(); const target = path.join(dir, suggested || "document"); let bytes: Buffer;
-    if (responseBody?.length) bytes = responseBody; else if (download.url()) { const response = await page.context().request.get(download.url(), { timeout: 60000 }); bytes = response.ok() ? await response.body() : Buffer.alloc(0); } else try { const sourcePath = await download.path(); bytes = sourcePath ? await readFile(sourcePath) : Buffer.alloc(0); } catch { const stream = await download.createReadStream(); if (!stream) throw new Error("stream de download indisponível"); const chunks: Buffer[] = []; for await (const chunk of stream) chunks.push(Buffer.from(chunk)); bytes = Buffer.concat(chunks); }
+    try { await download.saveAs(target); bytes = await readFile(target); } catch {
+      // O portal emite o evento Download, mas alguns Chromium removem o artefato
+      // temporário antes de saveAs/stream. Nesse caso, reutiliza somente a URL
+      // exata emitida pelo próprio evento, dentro do mesmo BrowserContext.
+      const response = await page.context().request.get(download.url(), { timeout: 60000 });
+      if (!response.ok()) throw new Error(`download HTTP ${response.status()}`);
+      bytes = await response.body(); await writeFile(target, bytes);
+    }
     if (!bytes.length) throw new Error("download vazio"); await writeFile(target, bytes);
     if (bytes.byteLength > MAX_FILE_BYTES) return { ...meta, url_origem: download.url(), mime_type: "", tamanho_bytes: bytes.byteLength, sha256: "", status_download: "failed", texto_extraido: "", erro: "arquivo excede limite" };
     const sha256 = createHash("sha256").update(bytes).digest("hex"); const texto = await extractDocumentText(target, "", suggested);
