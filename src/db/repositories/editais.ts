@@ -21,6 +21,7 @@ export interface EditalRichItem {
   sourceType?: string;
   contentHash?: string;
   documentsStatus?: string;
+  analysisStatus?: string;
   numeroEdital?: string;
   numeroProcesso?: string;
   orgao?: string;
@@ -226,7 +227,7 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
       item.siteOficial?.trim() || null,
       item.link_pdf?.trim() || null,
       item.externalId || null, item.canonicalKey || null, fonte, item.sourceType || null, item.contentHash || null,
-      item.documentsStatus || null, item.numeroEdital || null, item.numeroProcesso || null, item.orgao || null,
+      item.documentsStatus || null, item.analysisStatus || null, item.numeroEdital || null, item.numeroProcesso || null, item.orgao || null,
       item.municipio || null, item.estado || null, item.modalidade || null, item.tipoJulgamento || null,
       item.tipoDisputa || null, item.pregoeiro || null, item.legislacao || null, item.inicioEnvioPropostas || null,
       item.fimEnvioPropostas || null, item.aberturaLicitacao || null, item.andamento || null
