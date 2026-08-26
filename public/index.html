@@ -207,6 +207,15 @@
     .analysis-dl dt { color: var(--color-fog); font-weight: 500; }
     .analysis-dl dd { color: var(--color-bone); }
     .analysis-progress { border-left: 2px solid var(--color-copper); color: var(--color-mist); padding: 16px; }
+    .analysis-v2-section { border-left: 2px solid var(--color-graphite); padding-left: 16px; }
+    .analysis-v2-section.confirmed { border-left-color: var(--color-copper); }
+    .analysis-v2-section.inference { background: rgba(204, 145, 102, .04); border-left-color: var(--color-copper); }
+    .analysis-v2-section.critical { background: rgba(255, 255, 255, .04); border-left-color: var(--color-paper-white); }
+    .analysis-v2-section.unknown { border-left-color: var(--color-ash); }
+    .analysis-v2-section h3 { align-items: center; display: flex; gap: 8px; }
+    .analysis-v2-section h3::before { background: currentColor; border-radius: 50%; content: ""; flex: 0 0 6px; height: 6px; }
+    .analysis-verdict { border: 1px solid var(--color-copper); border-radius: var(--radius-sm); padding: 16px; }
+    .analysis-verdict strong { color: var(--color-paper-white); font-weight: 600; }
     .md-title, .md-sub, .modal-text-box h3, .modal-text-box h4 { color: var(--color-copper); }
     .modal-text-box a, .analysis-section a { color: var(--color-copper); }
     .source-picker { min-width: 0; position: relative; }
@@ -608,6 +617,31 @@
       analysisList("Checklist de submissão", r.checklist)
     ].join("") || `<p class="analysis-muted">A análise não retornou dados estruturados.</p>`;
   }
+  function analysisV2Section(title, value, tone = "") {
+    const empty = value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length);
+    return `<section class="analysis-section analysis-v2-section ${empty ? "unknown" : tone}"><h3>${esc(title)}</h3>${empty ? `<p class="analysis-muted">Não localizado no material analisado.</p>` : renderStructured(value)}</section>`;
+  }
+  function renderAnalysisV2(result) {
+    const r = result || {};
+    const meta = r.meta || {};
+    const verdict = r.veredito || {};
+    const proposal = r.proposta_recomendada || {};
+    const plan = r.plano_execucao || {};
+    return [
+      `<section class="analysis-section analysis-v2-section ${verdict.status === "NAO_APTO" ? "critical" : "confirmed"}"><h3>Veredito rápido</h3><div class="analysis-verdict"><strong>${esc(verdict.status || "DADOS_INSUFICIENTES")}</strong> · ${esc(verdict.prioridade || "nao_determinada")}<p>${esc(verdict.justificativa || "não localizado no material analisado")}</p></div>${renderStructured({ tipo_oportunidade: meta.tipo_oportunidade, confianca_classificacao: meta.confianca_classificacao, qualidade_dados: meta.qualidade_dados })}</section>`,
+      analysisV2Section("Resumo da oportunidade", r.resumo_oportunidade, "confirmed"),
+      analysisV2Section("Elegibilidade", r.elegibilidade, "confirmed"),
+      analysisV2Section("Exigências e documentos", { documentos: r.elegibilidade?.documentos, restricoes: r.elegibilidade?.restricoes }, "confirmed"),
+      analysisV2Section("Critérios e riscos", r.avaliacao, "critical"),
+      analysisV2Section("Projeto, solução ou plano recomendado", proposal, proposal.aplicavel === false ? "unknown" : "inference"),
+      analysisV2Section("Cronograma e orçamento", { cronograma: plan.cronograma, orcamento: plan.orcamento }, "inference"),
+      analysisV2Section("Indicadores e entregáveis", { indicadores: plan.indicadores, entregaveis: proposal.entregaveis }, "inference"),
+      analysisV2Section("Plano de ação", r.plano_acao, "inference"),
+      analysisV2Section("Checklist de submissão", r.checklist, "confirmed"),
+      analysisV2Section("Informações que ainda precisam ser confirmadas", { lacunas: r.avaliacao?.lacunas, perguntas_criticas: r.perguntas_criticas, alertas_dados: meta.alertas_dados, validacoes_pendentes: verdict.validacoes_pendentes }, "unknown"),
+      r.aviso ? `<p class="analysis-muted">${esc(r.aviso)}</p>` : ""
+    ].join("");
+  }
   async function requestAnalysis() {
     if (!activeItem?.id) return;
     analysisOverlay.classList.add("active"); analysisOverlay.setAttribute("aria-hidden", "false");
@@ -615,7 +649,7 @@
     $("analysisBody").innerHTML = `<div class="analysis-progress">Analisando edital, anexos e evidências. Esta janela será atualizada automaticamente.</div>`;
     const started = await request(`${API_BASE}/api/editais/${activeItem.id}/analysis`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force: true }) }).catch(e => ({ error: e.message }));
     if (started.error) { $("analysisStatus").textContent = started.error; return; }
-    if (started.resultado) { $("analysisStatus").textContent = started.cached ? "Análise reutilizada" : "Concluída"; $("analysisBody").innerHTML = renderAnalysis(started.resultado); return; }
+    if (started.resultado) { $("analysisStatus").textContent = started.cached ? "Análise reutilizada" : "Concluída"; $("analysisBody").innerHTML = started.resultado.meta ? renderAnalysisV2(started.resultado) : renderAnalysis(started.resultado); return; }
     $("analysisStatus").textContent = "Em processamento";
     let tries = 0;
     if (analysisTimer) clearInterval(analysisTimer);
@@ -638,7 +672,7 @@
         return null;
       });
       if (!data) return;
-      if (data.status === "completed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = renderAnalysis(data.resultado); }
+      if (data.status === "completed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Concluída"; $("analysisBody").innerHTML = data.resultado?.meta ? renderAnalysisV2(data.resultado) : renderAnalysis(data.resultado); }
       else if (data.status === "failed") { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Falhou"; $("analysisBody").innerHTML = `<p class="analysis-muted">${esc(data.erro || "Não foi possível concluir a análise.")}</p>`; }
       if (tries > 720) { clearInterval(analysisTimer); analysisTimer = null; $("analysisStatus").textContent = "Processamento em segundo plano"; $("analysisBody").innerHTML = `<div class="analysis-progress">A análise continua sendo processada em segundo plano devido à fila de proteção do OmniRoute. Reabra este edital para consultar o resultado.</div>`; }
     }, 2500);

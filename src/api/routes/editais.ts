@@ -143,7 +143,7 @@ export async function editaisRoutes(app: FastifyInstance) {
     const rows = await listAnalyses((request.params as { id: string }).id);
     let analysis = rows.find((x) => x.id === analysisId);
     if (!analysis) {
-      const byId = await pool.query("SELECT id,tipo,status,modelo,criado_em,atualizado_em,expira_em,resultado,erro FROM edital_analises WHERE id=$1", [analysisId]);
+      const byId = await pool.query("SELECT id,tipo,status,modelo,prompt_version,content_hash,data_analise,criado_em,atualizado_em,expira_em,resultado,erro FROM edital_analises WHERE id=$1", [analysisId]);
       if (byId.rowCount) analysis = byId.rows[0];
       else return reply.code(404).send({ message: "Análise não encontrada" });
     }
