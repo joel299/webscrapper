@@ -46,8 +46,11 @@ async function runOne(source: keyof typeof scrapers) {
 
 export async function runScrapers(fonte: string) {
   if (fonte === "all") {
-    for (const source of Object.keys(scrapers) as Array<keyof typeof scrapers>) {
-      try { await runOne(source); } catch (error) { console.error(`[scraper] fonte=${source} falhou: ${String(error)}`); }
+    const sources = Object.keys(scrapers) as Array<keyof typeof scrapers>;
+    for (let index = 0; index < sources.length; index += 2) {
+      await Promise.all(sources.slice(index, index + 2).map(async (source) => {
+        try { await runOne(source); } catch (error) { console.error(`[scraper] fonte=${source} falhou: ${String(error)}`); }
+      }));
     }
     return;
   }

@@ -53,6 +53,13 @@ await scraperQueue.add("run", { fonte: "all" }, {
   jobId: "automatic-initial-scrape"
 });
 
+await scraperQueue.add("run", { fonte: "compras_br" }, {
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 1000 },
+  attempts: 3,
+  jobId: "compras-br-bootstrap-v1"
+});
+
 await scraperQueue.add("run", { fonte: "all" }, automaticJobOptions);
 
 // Rotina de limpeza do bucket (expiração 7 dias) a cada 24h + imediatamente ao iniciar.
