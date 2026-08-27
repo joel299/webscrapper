@@ -75,6 +75,8 @@ export async function listEditais(filters: Record<string, unknown>) {
   if (typeof filters.fonte === "string" && filters.fonte.trim()) { values.push(filters.fonte.trim().toLowerCase()); conditions.push(`LOWER(e.fonte) = $${values.length}`); }
   if (typeof filters.status === "string" && filters.status.trim()) { values.push(`%${filters.status.trim()}%`); conditions.push(`e.status ILIKE $${values.length}`); }
   if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) { values.push(filters.data_fechamento_inicio); conditions.push(`e.data_fechamento >= $${values.length}`); }
+  if (typeof filters.data_fechamento_fim === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_fim)) { values.push(filters.data_fechamento_fim); conditions.push(`e.data_fechamento <= $${values.length}`); }
+  if (typeof filters.publico_alvo === "string" && filters.publico_alvo.trim()) { values.push(`%${filters.publico_alvo.trim()}%`); conditions.push(`e.publico_alvo ILIKE $${values.length}`); }
   const modo = typeof filters.modo === "string" ? filters.modo : "";
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const { rows } = await pool.query(`SELECT e.id, e.titulo, e.fonte, e.status, e.data_fechamento, e.link_edital, e.link_pdf, e.descricao,
@@ -98,8 +100,62 @@ export async function listEditais(filters: Record<string, unknown>) {
   for (const candidate of filtered) if (!used.has(candidate.row.fonte)) { diversified.push(candidate); used.add(candidate.row.fonte); }
   diversified.push(...filtered.filter((candidate) => !diversified.includes(candidate)));
   const offset = (page - 1) * limit; const selected = diversified.slice(offset, offset + limit).map(({ row, relevance }) => ({ ...row, relevance_score: relevance.score, relevance_terms: relevance.terms, relevance_fields: relevance.fields, relevance_reason: relevance.reason }));
-  const allSources = await pool.query("SELECT e.fonte, COUNT(*)::int AS total, MIN(e.data_fechamento) AS menor_data, MAX(e.data_fechamento) AS maior_data, MAX(e.ultima_coleta_em) AS ultima_coleta, r.status AS ultima_execucao, r.error_message AS ultimo_erro, r.started_at AS ultima_execucao_em FROM editais e LEFT JOIN LATERAL (SELECT status, error_message, started_at FROM scraper_runs WHERE LOWER(source)=LOWER(e.fonte) ORDER BY started_at DESC LIMIT 1) r ON true WHERE e.fonte IS NOT NULL GROUP BY e.fonte, r.status, r.error_message, r.started_at ORDER BY e.fonte");
-  const diagnostics = allSources.rows.map((source) => ({ fonte: source.fonte, status: source.ultima_execucao === "failed" ? "falha_no_adapter" : source.ultima_execucao === "running" ? "atualizacao_pendente" : sourceCounts.has(source.fonte) ? "com_resultados" : Number(source.total) ? "sem_correspondencia" : "sem_dados", quantidade_bruta: Number(source.total), quantidade_filtrada: sourceCounts.get(source.fonte) || 0, menor_data: source.menor_data, maior_data: source.maior_data, ultima_coleta: source.ultima_coleta, ultima_execucao: source.ultima_execucao || "nao_executado", ultimo_erro: source.ultimo_erro || null, ultima_execucao_em: source.ultima_execucao_em || null }));
+  const diagnosticParams = typeof filters.fonte === "string" && filters.fonte.trim() ? [filters.fonte.trim().toLowerCase()] : [];
+  const allSources = await pool.query(
+    `SELECT e.fonte, COUNT(*)::int AS total,
+            MIN(e.data_fechamento) AS menor_data,
+            MAX(e.data_fechamento) AS maior_data,
+            MAX(e.ultima_coleta_em) AS ultima_coleta,
+            r.status AS ultima_execucao,
+            r.error_message AS ultimo_erro,
+            r.started_at AS ultima_execucao_em,
+            r.last_success_at,
+            r.pages_scanned,
+            r.items_seen,
+            r.items_inserted,
+            r.items_updated,
+            r.documents_downloaded
+       FROM editais e
+       LEFT JOIN LATERAL (
+         SELECT status, error_message, started_at, last_success_at,
+                pages_scanned, items_seen, items_inserted, items_updated,
+                documents_downloaded
+           FROM scraper_runs
+          WHERE LOWER(source) = LOWER(e.fonte)
+          ORDER BY started_at DESC
+          LIMIT 1
+       ) r ON true
+      WHERE e.fonte IS NOT NULL ${diagnosticParams.length ? "AND LOWER(e.fonte) = $1" : ""}
+      GROUP BY e.fonte, r.status, r.error_message, r.started_at,
+               r.last_success_at, r.pages_scanned, r.items_seen,
+               r.items_inserted, r.items_updated, r.documents_downloaded
+      ORDER BY e.fonte`,
+    diagnosticParams
+  );
+  const diagnostics = allSources.rows.map((source) => ({
+    fonte: source.fonte,
+    status: source.ultima_execucao === "failed"
+      ? "falha_no_adapter"
+      : source.ultima_execucao === "running"
+        ? "atualizacao_pendente"
+        : sourceCounts.has(source.fonte)
+          ? "com_resultados"
+          : Number(source.total) ? "sem_correspondencia" : "sem_dados",
+    quantidade_bruta: Number(source.total),
+    quantidade_filtrada: sourceCounts.get(source.fonte) || 0,
+    menor_data: source.menor_data,
+    maior_data: source.maior_data,
+    ultima_coleta: source.ultima_coleta,
+    ultima_execucao: source.ultima_execucao || "nao_executado",
+    ultimo_erro: source.ultimo_erro || null,
+    ultima_execucao_em: source.ultima_execucao_em || null,
+    ultimo_sucesso_em: source.last_success_at || null,
+    pages_scanned: Number(source.pages_scanned || 0),
+    items_seen: Number(source.items_seen || 0),
+    items_inserted: Number(source.items_inserted || 0),
+    items_updated: Number(source.items_updated || 0),
+    documents_downloaded: Number(source.documents_downloaded || 0)
+  }));
   return { total: diversified.length, items: selected, diagnostics, fontes_solicitadas: filters.fonte ? [filters.fonte] : diagnostics.map((item) => item.fonte), fontes_com_resultados: diagnostics.filter((item) => item.quantidade_filtrada > 0).map((item) => item.fonte) };
 }
 
@@ -204,7 +260,7 @@ export async function upsertEditaisFromList(fonte: string, items: EditalRichItem
                          municipio, estado, modalidade, tipo_julgamento, tipo_disputa, pregoeiro, legislacao,
                          inicio_envio_propostas, fim_envio_propostas, abertura_licitacao, andamento)
     VALUES ${placeholders.join(", ")}
-    ON CONFLICT (link_edital) DO UPDATE SET
+    ON CONFLICT DO UPDATE SET
       titulo = EXCLUDED.titulo,
       status = COALESCE(EXCLUDED.status, editais.status),
       data_fechamento = COALESCE(EXCLUDED.data_fechamento, editais.data_fechamento),

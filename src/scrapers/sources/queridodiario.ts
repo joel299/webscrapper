@@ -1,5 +1,6 @@
 import { upsertEditaisFromList, type EditalRichItem } from "../../db/repositories/editais.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
+import { fetchWithRetry } from "../http.js";
 
 const BASE = "https://api.queridodiario.ok.org.br/api/gazettes";
 
@@ -40,7 +41,7 @@ export async function queridoDiarioScraper() {
     for (const q of queries) {
       const url = `${BASE}?since=${since}&until=${until}&size=15&q=${encodeURIComponent(q)}`;
       try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+        const res = await fetchWithRetry(url, {}, { timeoutMs: 20000 });
         if (!res.ok) continue;
         const data = (await res.json()) as { gazettes?: Gazete[] };
         for (const g of data.gazettes ?? []) {
@@ -75,5 +76,7 @@ export async function queridoDiarioScraper() {
   if (deduped.length) {
     const res = await upsertEditaisFromList("queridodiario", deduped);
     console.log(`[queridodiario] itens=${deduped.length} inseridos=${res.inserted}`);
+    return { pagesScanned: TECHNOLOGY_QUERIES.length, itemsSeen: allItems.length, itemsInserted: res.inserted };
   }
+  return { pagesScanned: TECHNOLOGY_QUERIES.length, itemsSeen: allItems.length, itemsInserted: 0 };
 }

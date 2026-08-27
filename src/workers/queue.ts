@@ -8,12 +8,18 @@ const connection = {
 export const scraperQueue = new Queue("scraper", { connection });
 export const analysisQueue = new Queue("analysis", { connection });
 
-export async function enqueueScraperRun(fonte: string) {
+export async function enqueueScraperRun(fonte: string, jobId?: string) {
   return scraperQueue.add("run", { fonte }, {
     removeOnComplete: { count: 1000 },
     removeOnFail: { count: 1000 },
-    attempts: 3
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+    jobId: jobId || `sync:${fonte}`
   });
+}
+
+export async function enqueueDailySyncSources(sources: string[], date: string) {
+  return Promise.all(sources.map((fonte) => enqueueScraperRun(fonte, `daily-sync:${date}:${fonte}`)));
 }
 
 export async function enqueueAnalysis(analysisId: string) {
@@ -26,7 +32,7 @@ export async function enqueueAnalysis(analysisId: string) {
     }
     await existing.remove();
   }
-  return analysisQueue.add("analysis", { analysisId }, { jobId, removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2 });
+  return analysisQueue.add("analysis", { analysisId }, { jobId, removeOnComplete: { count: 100 }, removeOnFail: { count: 100 }, attempts: 2, backoff: { type: "exponential", delay: 5000 } });
 }
 
 export async function analysisQueueHasCapacity(analysisId: string) {

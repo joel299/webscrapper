@@ -5,7 +5,7 @@ import { pncpScraper } from "./sources/pncp.js";
 import { queridoDiarioScraper } from "./sources/queridodiario.js";
 import { comprasGovScraper } from "./sources/comprasgov.js";
 import { comprasBrScraper } from "./sources/comprasbr.js";
-import { finishScraperRun, startScraperRun } from "./runStatus.js";
+import { finishScraperRun, startScraperRun, type ScraperRunMetrics } from "./runStatus.js";
 
 const scrapers = {
   capta: captaScraper,
@@ -32,29 +32,30 @@ function normalizeFonte(input: string) {
   return null;
 }
 
-async function runOne(source: keyof typeof scrapers) {
+async function runOne(source: keyof typeof scrapers, jobId?: string) {
   let runId: number | null = null;
   try {
-    runId = await startScraperRun(source);
+    runId = await startScraperRun(source, jobId ? `${jobId}:${Date.now()}` : undefined);
     const persisted = await scrapers[source]();
-    await finishScraperRun(runId, "completed", typeof persisted === "number" ? persisted : 0);
+    const metrics: ScraperRunMetrics = typeof persisted === "number" ? { itemsInserted: persisted } : (persisted || {});
+    await finishScraperRun(runId, "success", metrics);
   } catch (error) {
-    if (runId !== null) await finishScraperRun(runId, "failed", 0, error instanceof Error ? error.message : String(error));
+    if (runId !== null) await finishScraperRun(runId, "failed", {}, error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
 
-export async function runScrapers(fonte: string) {
+export async function runScrapers(fonte: string, jobId?: string) {
   if (fonte === "all") {
     const sources = Object.keys(scrapers) as Array<keyof typeof scrapers>;
     for (let index = 0; index < sources.length; index += 2) {
       await Promise.all(sources.slice(index, index + 2).map(async (source) => {
-        try { await runOne(source); } catch (error) { console.error(`[scraper] fonte=${source} falhou: ${String(error)}`); }
+        try { await runOne(source, jobId); } catch (error) { console.error(`[scraper] fonte=${source} falhou: ${String(error)}`); }
       }));
     }
     return;
   }
   const normalized = normalizeFonte(fonte);
   if (!normalized) throw new Error(`Fonte nao suportada: ${fonte}`);
-  await runOne(normalized);
+  await runOne(normalized, jobId);
 }

@@ -1,4 +1,5 @@
 import { upsertEditaisFromList } from "../../db/repositories/editais.js";
+import { fetchWithRetry } from "../http.js";
 
 interface PncpItem {
   id?: string;
@@ -17,7 +18,7 @@ interface PncpItem {
 export async function pncpScraper() {
   const url = "https://pncp.gov.br/api/search/?q=edital&tipos_documento=edital&pagina=1&tam_pagina=30";
   try {
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         Accept: "application/json"
@@ -27,7 +28,7 @@ export async function pncpScraper() {
     if (!res.ok) {
       // eslint-disable-next-line no-console
       console.warn(`[pncp] HTTP ${res.status}`);
-      return;
+      return { pagesScanned: 1, itemsSeen: 0, itemsInserted: 0 };
     }
 
     const data = (await res.json()) as { items?: PncpItem[] };
@@ -55,8 +56,10 @@ export async function pncpScraper() {
     const result = await upsertEditaisFromList("pncp", mapped);
     // eslint-disable-next-line no-console
     console.log(`[pncp] itens=${mapped.length} inseridos=${result.inserted}`);
+    return { pagesScanned: 1, itemsSeen: items.length, itemsInserted: result.inserted };
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[pncp] erro:", error);
+    return { pagesScanned: 1, itemsSeen: 0, itemsInserted: 0 };
   }
 }

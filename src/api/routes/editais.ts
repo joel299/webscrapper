@@ -7,6 +7,8 @@ import { formatEditalBody } from "../../utils/formatEdital.js";
 import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
 import { requestAnalysis, listAnalyses } from "../../analysis/editalAnalysis.js";
 import { enqueueAnalysis, analysisQueueHasCapacity } from "../../workers/queue.js";
+import { enqueueScraperRun } from "../../workers/queue.js";
+import { env } from "../../config/env.js";
 
 export async function editaisRoutes(app: FastifyInstance) {
   app.get("/", {
@@ -66,17 +68,32 @@ export async function editaisRoutes(app: FastifyInstance) {
             },
             diagnostics: { type: "array", items: { type: "object", additionalProperties: true } },
             fontes_solicitadas: { type: "array", items: { type: "string" } },
-            fontes_com_resultados: { type: "array", items: { type: "string" } }
+            fontes_com_resultados: { type: "array", items: { type: "string" } },
+            sync_queued_sources: { type: "array", items: { type: "string" } }
           }
         }
       }
     }
   }, async (request) => {
-    const result = await listEditais(request.query as Record<string, unknown>);
+    const query = request.query as Record<string, unknown>;
+    const result = await listEditais(query);
     const knownSources = availableSources.map((fonte) => fonte.toLowerCase());
     const diagnosticSources = new Map((result.diagnostics || []).map((item) => [String(item.fonte).toLowerCase(), item]));
-    result.diagnostics = [...knownSources.map((fonte) => diagnosticSources.get(fonte) || ({ fonte, status: "sem_dados", quantidade_bruta: 0, quantidade_filtrada: 0, menor_data: null, maior_data: null, ultima_coleta: null, ultima_execucao: "nao_executado", ultimo_erro: null, ultima_execucao_em: null })), ...(result.diagnostics || []).filter((item) => !knownSources.includes(String(item.fonte).toLowerCase()))];
-    return result;
+    const requestedSources = typeof query.fonte === "string" && query.fonte.trim() ? [query.fonte.trim().toLowerCase()] : knownSources;
+    result.diagnostics = [...requestedSources.map((fonte) => diagnosticSources.get(fonte) || ({ fonte, status: "sem_dados", quantidade_bruta: 0, quantidade_filtrada: 0, menor_data: null, maior_data: null, ultima_coleta: null, ultima_execucao: "nao_executado", ultimo_erro: null, ultima_execucao_em: null, ultimo_sucesso_em: null, pages_scanned: 0, items_seen: 0, items_inserted: 0, items_updated: 0, documents_downloaded: 0 })), ...(result.diagnostics || []).filter((item) => !requestedSources.includes(String(item.fonte).toLowerCase()))];
+    const now = Date.now();
+    const syncQueuedSources: string[] = [];
+    for (const fonte of requestedSources) {
+      const diagnostic = result.diagnostics.find((item) => String(item.fonte).toLowerCase() === fonte);
+      const finished = ["success", "completed"].includes(diagnostic?.ultima_execucao) && diagnostic?.ultimo_sucesso_em && now - new Date(diagnostic.ultimo_sucesso_em).getTime() < 24 * 60 * 60 * 1000;
+      const running = diagnostic?.ultima_execucao === "running";
+      if (!finished && !running) {
+        const date = new Intl.DateTimeFormat("en-CA", { timeZone: env.BUSINESS_TIMEZONE }).format(new Date());
+        await enqueueScraperRun(fonte, `search-sync:${date}:${fonte}`);
+        syncQueuedSources.push(fonte);
+      }
+    }
+    return { ...result, sync_queued_sources: syncQueuedSources };
   });
 
   app.get("/sources", {

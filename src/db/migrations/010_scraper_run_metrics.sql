@@ -1,0 +1,11 @@
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS run_id TEXT;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS last_success_at TIMESTAMPTZ;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS pages_scanned INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS items_seen INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS items_inserted INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS items_updated INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scraper_runs ADD COLUMN IF NOT EXISTS documents_downloaded INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE scraper_runs DROP CONSTRAINT IF EXISTS scraper_runs_status_check;
+ALTER TABLE scraper_runs ADD CONSTRAINT scraper_runs_status_check CHECK (status IN ('queued', 'running', 'success', 'partial', 'retrying', 'failed', 'completed'));
+CREATE UNIQUE INDEX IF NOT EXISTS scraper_runs_run_id_unique ON scraper_runs (run_id) WHERE run_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS editais_source_external_id_unique ON editais (LOWER(COALESCE(source_code, fonte)), external_id) WHERE external_id IS NOT NULL;

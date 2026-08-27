@@ -142,7 +142,7 @@
     .panel { background: var(--surface-card); border: 1px solid var(--color-graphite); border-radius: var(--radius-lg); margin-bottom: 32px; padding: 24px; }
     .panel-title, .modal-section-label { color: var(--color-copper); font-size: 13px; font-weight: 600; letter-spacing: -.02em; text-transform: uppercase; }
     .panel-title { align-items: baseline; display: flex; justify-content: space-between; margin-bottom: 20px; }
-    .search-grid { align-items: end; display: grid; gap: 16px; grid-template-columns: minmax(180px, 1.2fr) minmax(200px, 1.3fr) minmax(160px, 1fr) 170px 100px 156px; }
+    .search-grid { align-items: end; display: grid; gap: 16px; grid-template-columns: minmax(160px, 1.2fr) minmax(190px, 1.3fr) minmax(150px, 1fr) 170px 100px minmax(214px, max-content); }
     label { color: var(--color-fog); display: grid; font-size: 13px; font-weight: 500; gap: 8px; min-width: 0; }
     input, select { appearance: none; background: var(--surface-panel); border: 1px solid var(--color-slate); border-radius: var(--radius-full); color: var(--color-bone); font: inherit; font-size: 14px; min-height: 44px; padding: 10px 14px; width: 100%; }
     select { background-image: linear-gradient(45deg, transparent 50%, var(--color-steel) 50%), linear-gradient(135deg, var(--color-steel) 50%, transparent 50%); background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px; background-repeat: no-repeat; background-size: 5px 5px, 5px 5px; padding-right: 34px; }
@@ -156,7 +156,7 @@
     .btn-search:active:not(:disabled) { transform: translateY(0); }
     .btn-link { align-items: center; background: transparent; border: 1px solid var(--color-steel); border-radius: var(--radius-full); color: var(--color-paper-white); cursor: pointer; display: inline-flex; font: 500 13px var(--font-inter); justify-content: center; min-height: 44px; padding: 8px 12px; text-decoration: none; transition: background .15s ease, border-color .15s ease; white-space: nowrap; }
     .btn-link:hover { background: var(--surface-panel); border-color: var(--color-paper-white); }
-    #statusMessage { color: var(--color-fog) !important; min-height: 24px !important; }
+    #statusMessage { display: none !important; min-height: 0 !important; }
     #statusMessage.status-error { color: var(--color-bone) !important; }
     #statusMessage:not(:empty) { border-left: 2px solid var(--color-copper); padding-left: 12px; }
     .table-scroll { overflow-x: auto; width: 100%; }
@@ -248,12 +248,15 @@
     .source-picker-option { background: transparent; border: 0; border-radius: var(--radius-sm); color: var(--color-bone); cursor: pointer; font: 400 14px var(--font-inter); min-height: 44px; padding: 10px 12px; text-align: left; width: 100%; }
     .source-picker-option:hover, .source-picker-option:focus-visible { background: var(--surface-floating); color: var(--color-paper-white); outline: none; }
     .source-picker-option[aria-selected="true"] { color: var(--color-copper); font-weight: 600; }
-    .filter-actions { align-items: center; display: flex; gap: 10px; }
-    .btn-clear { background: transparent; border: 1px solid var(--color-slate); border-radius: var(--radius-full); color: var(--color-steel); cursor: pointer; min-height: 44px; padding: 10px 14px; }
-    .diagnostic-summary { color: var(--color-steel); font-size: 13px; margin-top: 12px; }
-    @media (max-width: 1024px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .btn-search { width: 100%; } }
-    @media (max-width: 768px) { main { width: min(100% - 32px, var(--page-max-width)); padding-top: 32px; } .header { margin-bottom: 24px; } .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 20px; } .modal-overlay { padding: 12px; } .modal-card { max-height: 94vh; } .modal-body { max-height: calc(94vh - 145px); padding: 20px; } }
-    @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } .analysis-checklist li { grid-template-columns: 20px 1fr; } .check-type { grid-column: 2; margin-top: -4px; } }
+    .filter-actions { align-items: center; display: flex; gap: 10px; justify-content: flex-end; min-width: 214px; }
+    .filter-actions button { flex: 0 0 auto; white-space: nowrap; }
+    .btn-clear { background: transparent; border: 1px solid var(--color-slate); border-radius: var(--radius-full); color: var(--color-steel); cursor: pointer; min-height: 44px; padding: 10px 14px; white-space: nowrap; }
+    .diagnostic-summary { display: none !important; }
+    #resultsUpdating { color: var(--color-fog); display: none; font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+    #resultsUpdating.active { display: inline; }
+    @media (max-width: 1100px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .filter-actions { grid-column: 1 / -1; } }
+    @media (max-width: 768px) { main { width: min(100% - 32px, var(--page-max-width)); padding-top: 32px; } .header { margin-bottom: 24px; } .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filter-actions { grid-column: 1 / -1; } .panel { padding: 20px; } .modal-overlay { padding: 12px; } .modal-card { max-height: 94vh; } .modal-body { max-height: calc(94vh - 145px); padding: 20px; } }
+    @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .filter-actions { align-items: stretch; flex-direction: column; grid-column: 1; width: 100%; } .filter-actions button { width: 100%; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } .analysis-checklist li { grid-template-columns: 20px 1fr; } .check-type { grid-column: 2; margin-top: -4px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
   </style>
 </head>
@@ -293,12 +296,12 @@
       <div class="filter-actions"><button id="searchBtn" class="btn-search">Buscar editais</button><button id="clearFiltersBtn" class="btn-clear" type="button">Limpar filtros</button></div>
     </div>
     <div id="statusMessage" role="status" aria-live="polite"></div>
-    <div id="diagnosticSummary" class="diagnostic-summary" role="status" aria-live="polite"></div>
+    <div id="diagnosticSummary" aria-live="polite" hidden></div>
   </section>
 
   <section class="panel">
     <div class="panel-title">
-      <span>Resultados Encontrados</span>
+      <span>Resultados Encontrados <span id="resultsUpdating" aria-live="polite"></span></span>
       <span id="totalCount" style="color: #9ca3af; font-weight: 500;">(0)</span>
     </div>
     <div class="table-scroll">
@@ -424,6 +427,11 @@
     $("statusMessage").textContent = msg;
     $("statusMessage").classList.toggle("status-error", err);
     $("statusMessage").setAttribute("aria-live", err ? "assertive" : "polite");
+    const updating = $("resultsUpdating");
+    if (updating) {
+      updating.textContent = msg && !err ? "Atualizando oportunidades…" : "";
+      updating.classList.toggle("active", Boolean(msg && !err));
+    }
   };
 
   const request = async (url, options = {}) => {
@@ -585,6 +593,7 @@
   const analysisOverlay = $("analysisOverlay");
   let activeItem = null;
   let analysisTimer = null;
+  let searchRefreshTimer = null;
   let lastFocusedElement = null;
   function closeAnalysis() {
     if (analysisTimer) { clearInterval(analysisTimer); analysisTimer = null; }
@@ -866,12 +875,11 @@
   function renderDiagnostics(diagnostics) {
     const box = $("diagnosticSummary");
     if (!box) return;
-    const found = diagnostics.filter(item => Number(item.quantidade_filtrada) > 0).map(item => `${humanSource(item.fonte)} (${item.quantidade_filtrada})`);
-    const empty = diagnostics.filter(item => !Number(item.quantidade_filtrada)).map(item => `${humanSource(item.fonte)} ${item.status === "falha_no_adapter" ? "com falha no adapter" : item.status === "atualizacao_pendente" ? "com atualização pendente" : item.status === "sem_dados" ? "sem dados sincronizados" : "sem correspondência"}`);
-    box.textContent = [...(found.length ? [`${found.join(", ")} encontrados.`] : []), ...empty].join(" ");
+    box.textContent = "";
   }
 
   async function executeSearch() {
+    if (searchRefreshTimer) { clearInterval(searchRefreshTimer); searchRefreshTimer = null; }
     const searchBtn = $("searchBtn");
     searchBtn.disabled = true;
     searchBtn.setAttribute("aria-busy", "true");
@@ -889,9 +897,14 @@
     try {
       const res = await request(`${API_BASE}/api/editais/?${params.toString()}`);
       renderTable(res);
-      setStatus("");
+      if (res.sync_queued_sources?.length) {
+        setStatus("Atualizando oportunidades…");
+        pollSearchResults(params, res.sync_queued_sources);
+      } else {
+        setStatus("");
+      }
     } catch (e) {
-      setStatus(e.message, true);
+      setStatus("Não foi possível atualizar as oportunidades.", true);
       renderTable({ total: 0, items: [] });
     } finally {
       searchBtn.disabled = false;
@@ -899,8 +912,26 @@
     }
   }
 
+  function pollSearchResults(params, sources) {
+    let attempts = 0;
+    searchRefreshTimer = setInterval(async () => {
+      attempts += 1;
+      try {
+        const res = await request(`${API_BASE}/api/editais/?${params.toString()}`);
+        renderTable(res);
+        const pending = (res.diagnostics || []).some(item => sources.includes(String(item.fonte).toLowerCase()) && ["running", "queued", "retrying"].includes(item.ultima_execucao));
+        if (!pending || attempts >= 12) {
+          clearInterval(searchRefreshTimer); searchRefreshTimer = null; setStatus("");
+        }
+      } catch (_) {
+        if (attempts >= 12) { clearInterval(searchRefreshTimer); searchRefreshTimer = null; setStatus(""); }
+      }
+    }, 10000);
+  }
+
   $("searchBtn").onclick = executeSearch;
   $("clearFiltersBtn").onclick = () => {
+    if (searchRefreshTimer) { clearInterval(searchRefreshTimer); searchRefreshTimer = null; }
     $("texto").value = ""; $("modo").value = ""; $("fonte").value = ""; $("dataInicio").value = todayIso; $("limit").value = "20"; syncSourcePicker(); executeSearch();
   };
   document.addEventListener("keydown", (e) => {

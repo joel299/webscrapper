@@ -1,4 +1,5 @@
 import { upsertEditaisFromList, type EditalRichItem } from "../../db/repositories/editais.js";
+import { fetchWithRetry } from "../http.js";
 
 const BASE = "https://dadosabertos.compras.gov.br";
 
@@ -15,7 +16,7 @@ export async function comprasGovScraper() {
 
   for (const url of urls) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+      const res = await fetchWithRetry(url, {}, { timeoutMs: 25000 });
       if (!res.ok) continue;
       const data = (await res.json()) as { _embedded?: Record<string, Array<Record<string, unknown>>>; content?: Array<Record<string, unknown>> };
       const list = (data._embedded ? Object.values(data._embedded)[0] : null) ?? data.content ?? [];
@@ -48,5 +49,7 @@ export async function comprasGovScraper() {
   if (deduped.length) {
     const res = await upsertEditaisFromList("comprasgov", deduped);
     console.log(`[comprasgov] itens=${deduped.length} inseridos=${res.inserted}`);
+    return { pagesScanned: urls.length, itemsSeen: allItems.length, itemsInserted: res.inserted };
   }
+  return { pagesScanned: urls.length, itemsSeen: allItems.length, itemsInserted: 0 };
 }
