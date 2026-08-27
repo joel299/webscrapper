@@ -20,7 +20,7 @@ new Worker(
   },
   {
     connection,
-    concurrency: env.SCRAPER_CONCURRENCY
+    concurrency: Math.max(2, Math.min(env.SCRAPER_CONCURRENCY, 2))
   }
 );
 
@@ -46,18 +46,19 @@ const automaticJobOptions = {
   repeat: { every: env.SCRAPER_INTERVAL_MINUTES * 60 * 1000 }
 };
 
+await scraperQueue.add("run", { fonte: "compras_br" }, {
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 1000 },
+  attempts: 3,
+  priority: 1,
+  jobId: "compras-br-bootstrap-v2"
+});
+
 await scraperQueue.add("run", { fonte: "all" }, {
   removeOnComplete: { count: 1000 },
   removeOnFail: { count: 1000 },
   attempts: 3,
   jobId: "automatic-initial-scrape"
-});
-
-await scraperQueue.add("run", { fonte: "compras_br" }, {
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 1000 },
-  attempts: 3,
-  jobId: "compras-br-bootstrap-v1"
 });
 
 await scraperQueue.add("run", { fonte: "all" }, automaticJobOptions);
