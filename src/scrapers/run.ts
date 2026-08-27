@@ -36,8 +36,8 @@ async function runOne(source: keyof typeof scrapers) {
   let runId: number | null = null;
   try {
     runId = await startScraperRun(source);
-    await scrapers[source]();
-    await finishScraperRun(runId, "completed");
+    const persisted = await scrapers[source]();
+    await finishScraperRun(runId, "completed", typeof persisted === "number" ? persisted : 0);
   } catch (error) {
     if (runId !== null) await finishScraperRun(runId, "failed", 0, error instanceof Error ? error.message : String(error));
     throw error;
