@@ -1,5 +1,5 @@
 import { pool } from "../pool.js";
-import { TECHNOLOGY_QUERIES } from "../../config/searchQueries.js";
+import { scoreCandidate, type RelevanceResult } from "../../search/relevance.js";
 
 export interface EditalRichItem {
   titulo: string;
@@ -70,79 +70,37 @@ function tokenizeTexto(raw: unknown): string[] {
 export async function listEditais(filters: Record<string, unknown>) {
   const page = Number(filters.page ?? 1);
   const limit = Number(filters.limit ?? 20);
-  const offset = (page - 1) * limit;
   const values: Array<string | number> = [];
   const conditions: string[] = [];
-
-  const addFilter = (value: unknown, expression: string) => {
-    if (typeof value !== "string" || !value.trim()) return;
-    values.push(`%${value.trim()}%`);
-    conditions.push(expression.replaceAll("$VALUE", `$${values.length}`));
-  };
-
-  addFilter(filters.fonte, "e.fonte ILIKE $VALUE");
-  addFilter(filters.status, "e.status ILIKE $VALUE");
-
-  // Fonte configurada por id de query pronta da planilha (?modo=software|ia|nuvem|...)
+  if (typeof filters.fonte === "string" && filters.fonte.trim()) { values.push(filters.fonte.trim().toLowerCase()); conditions.push(`LOWER(e.fonte) = $${values.length}`); }
+  if (typeof filters.status === "string" && filters.status.trim()) { values.push(`%${filters.status.trim()}%`); conditions.push(`e.status ILIKE $${values.length}`); }
+  if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) { values.push(filters.data_fechamento_inicio); conditions.push(`e.data_fechamento >= $${values.length}`); }
   const modo = typeof filters.modo === "string" ? filters.modo : "";
-  if (modo) {
-    const q = TECHNOLOGY_QUERIES.find((q) => q.id === modo);
-    if (q && q.terms.length) {
-      const termSql: string[] = [];
-      for (const t of q.terms) {
-        values.push(`%${t}%`);
-        termSql.push(`(e.titulo ILIKE $${values.length} OR e.descricao ILIKE $${values.length} OR e.area_tematica ILIKE $${values.length})`);
-      }
-      conditions.push(`(${termSql.join(" OR ")})`);
-    }
-  } else if (typeof filters.texto === "string" && filters.texto.trim()) {
-    const terms = tokenizeTexto(filters.texto);
-    if (terms.length) {
-      const termSql: string[] = [];
-      for (const t of terms) {
-        values.push(`%${t}%`);
-        termSql.push(`(e.titulo ILIKE $${values.length} OR e.descricao ILIKE $${values.length} OR e.area_tematica ILIKE $${values.length} OR e.publico_alvo ILIKE $${values.length})`);
-      }
-      conditions.push(`(${termSql.join(" OR ")})`);
-    }
-  }
-
-  if (typeof filters.data_fechamento_inicio === "string" && /^\d{4}-\d{2}-\d{2}$/.test(filters.data_fechamento_inicio)) {
-    values.push(filters.data_fechamento_inicio);
-    conditions.push(`e.data_fechamento >= $${values.length}`);
-  }
-
-  // Força retorno de licitações reais: exclui títulos genéricos/não-editais
-  const noise: string[] = [];
-  for (const t of NON_EDITAL_TITLES) {
-    values.push(`%${t}%`);
-    noise.push(`LOWER(e.titulo) LIKE $${values.length}`);
-  }
-  conditions.push(`NOT (${noise.join(" OR ")})`);
-
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const limitIndex = values.length + 1;
-  const offsetIndex = values.length + 2;
-  values.push(limit, offset);
-
-  const { rows } = await pool.query(
-    `SELECT e.id, e.titulo, e.fonte, e.status, e.data_fechamento, e.link_edital, e.link_pdf, e.descricao,
+  const { rows } = await pool.query(`SELECT e.id, e.titulo, e.fonte, e.status, e.data_fechamento, e.link_edital, e.link_pdf, e.descricao,
             e.valor_texto, e.periodo_texto, e.area_tematica, e.publico_alvo, e.ods_texto, e.whatsapp, e.site_oficial,
+            e.source_code, e.source_type, e.external_id, e.canonical_key, e.documents_status, e.numero_edital, e.numero_processo,
+            e.orgao, e.municipio, e.estado, e.modalidade, e.tipo_julgamento, e.tipo_disputa, e.pregoeiro, e.legislacao,
+            e.inicio_envio_propostas, e.fim_envio_propostas, e.abertura_licitacao, e.andamento,
             a.status AS analysis_status, a.id AS analysis_id
-     FROM editais e
-     LEFT JOIN LATERAL (
-       SELECT status, id FROM edital_analises
-       WHERE edital_id = e.id AND tipo = 'aderencia' AND expira_em > now()
-       ORDER BY CASE status WHEN 'completed' THEN 0 WHEN 'running' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END, criado_em DESC
-       LIMIT 1
-     ) a ON true
-     ${where}
-     ORDER BY e.data_fechamento DESC NULLS LAST LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+     FROM editais e LEFT JOIN LATERAL (SELECT status, id FROM edital_analises WHERE edital_id = e.id AND tipo = 'aderencia' AND expira_em > now()
+       ORDER BY CASE status WHEN 'completed' THEN 0 WHEN 'running' THEN 1 WHEN 'queued' THEN 2 ELSE 3 END, criado_em DESC LIMIT 1) a ON true ${where}`,
     values
   );
-
-  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM editais e ${where}`, values.slice(0, -2));
-  return { total: count.rows[0]?.total ?? 0, items: rows };
+  const text = typeof filters.texto === "string" ? filters.texto : "";
+  const candidates = rows.filter((row) => !NON_EDITAL_TITLES.some((term) => String(row.titulo || "").toLowerCase().includes(term))).map((row) => ({ row, relevance: scoreCandidate(row, modo, text) })).filter(({ relevance }) => relevance.accepted);
+  const unique = new Map<string, { row: any; relevance: RelevanceResult }>();
+  for (const candidate of candidates) unique.set(String(candidate.row.canonical_key || candidate.row.link_edital || candidate.row.id), candidate);
+  const filtered = [...unique.values()];
+  filtered.sort((a, b) => b.relevance.score - a.relevance.score || String(b.row.data_fechamento || "").localeCompare(String(a.row.data_fechamento || "")));
+  const sourceCounts = new Map<string, number>(); filtered.forEach(({ row }) => sourceCounts.set(row.fonte, (sourceCounts.get(row.fonte) || 0) + 1));
+  const diversified: typeof filtered = []; const used = new Set<string>();
+  for (const candidate of filtered) if (!used.has(candidate.row.fonte)) { diversified.push(candidate); used.add(candidate.row.fonte); }
+  diversified.push(...filtered.filter((candidate) => !diversified.includes(candidate)));
+  const offset = (page - 1) * limit; const selected = diversified.slice(offset, offset + limit).map(({ row, relevance }) => ({ ...row, relevance_score: relevance.score, relevance_terms: relevance.terms, relevance_fields: relevance.fields, relevance_reason: relevance.reason }));
+  const allSources = await pool.query("SELECT e.fonte, COUNT(*)::int AS total, MIN(e.data_fechamento) AS menor_data, MAX(e.data_fechamento) AS maior_data, MAX(e.ultima_coleta_em) AS ultima_coleta, r.status AS ultima_execucao, r.error_message AS ultimo_erro, r.started_at AS ultima_execucao_em FROM editais e LEFT JOIN LATERAL (SELECT status, error_message, started_at FROM scraper_runs WHERE LOWER(source)=LOWER(e.fonte) ORDER BY started_at DESC LIMIT 1) r ON true WHERE e.fonte IS NOT NULL GROUP BY e.fonte, r.status, r.error_message, r.started_at ORDER BY e.fonte");
+  const diagnostics = allSources.rows.map((source) => ({ fonte: source.fonte, status: source.ultima_execucao === "failed" ? "falha_no_adapter" : source.ultima_execucao === "running" ? "atualizacao_pendente" : sourceCounts.has(source.fonte) ? "com_resultados" : Number(source.total) ? "sem_correspondencia" : "sem_dados", quantidade_bruta: Number(source.total), quantidade_filtrada: sourceCounts.get(source.fonte) || 0, menor_data: source.menor_data, maior_data: source.maior_data, ultima_coleta: source.ultima_coleta, ultima_execucao: source.ultima_execucao || "nao_executado", ultimo_erro: source.ultimo_erro || null, ultima_execucao_em: source.ultima_execucao_em || null }));
+  return { total: diversified.length, items: selected, diagnostics, fontes_solicitadas: filters.fonte ? [filters.fonte] : diagnostics.map((item) => item.fonte), fontes_com_resultados: diagnostics.filter((item) => item.quantidade_filtrada > 0).map((item) => item.fonte) };
 }
 
 export async function listEditalSources() {

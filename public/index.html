@@ -248,6 +248,9 @@
     .source-picker-option { background: transparent; border: 0; border-radius: var(--radius-sm); color: var(--color-bone); cursor: pointer; font: 400 14px var(--font-inter); min-height: 44px; padding: 10px 12px; text-align: left; width: 100%; }
     .source-picker-option:hover, .source-picker-option:focus-visible { background: var(--surface-floating); color: var(--color-paper-white); outline: none; }
     .source-picker-option[aria-selected="true"] { color: var(--color-copper); font-weight: 600; }
+    .filter-actions { align-items: center; display: flex; gap: 10px; }
+    .btn-clear { background: transparent; border: 1px solid var(--color-slate); border-radius: var(--radius-full); color: var(--color-steel); cursor: pointer; min-height: 44px; padding: 10px 14px; }
+    .diagnostic-summary { color: var(--color-steel); font-size: 13px; margin-top: 12px; }
     @media (max-width: 1024px) { .search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .btn-search { width: 100%; } }
     @media (max-width: 768px) { main { width: min(100% - 32px, var(--page-max-width)); padding-top: 32px; } .header { margin-bottom: 24px; } .search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 20px; } .modal-overlay { padding: 12px; } .modal-card { max-height: 94vh; } .modal-body { max-height: calc(94vh - 145px); padding: 20px; } }
     @media (max-width: 520px) { main { width: min(100% - 24px, var(--page-max-width)); padding-bottom: 48px; } h1 { font-size: 40px; } p.subtitle { font-size: 16px; } .search-grid { grid-template-columns: 1fr; } .panel { padding: 16px; } .panel-title { align-items: flex-start; flex-direction: column; gap: 6px; } .modal-header { padding: 18px 16px; } .modal-title { font-size: 25px; } .modal-header { flex-wrap: wrap; } .modal-header > div:first-child { flex: 1 1 100%; order: 1; } .btn-analyze { order: 2; } .btn-close { margin-left: auto; order: 2; } .modal-body { gap: 20px; padding: 18px 16px; } .meta-grid { gap: 14px; grid-template-columns: 1fr; } .modal-footer { align-items: stretch; flex-direction: column; padding: 14px 16px; } .modal-footer a, .modal-footer button { width: 100%; } .modal-footer .btn-search { order: 0; } .analysis-dl > div { grid-template-columns: 1fr; gap: 4px; } .analysis-checklist li { grid-template-columns: 20px 1fr; } .check-type { grid-column: 2; margin-top: -4px; } }
@@ -287,9 +290,10 @@
       <label>Limite
         <input id="limit" type="number" min="1" max="100" value="20">
       </label>
-      <button id="searchBtn" class="btn-search">Buscar editais</button>
+      <div class="filter-actions"><button id="searchBtn" class="btn-search">Buscar editais</button><button id="clearFiltersBtn" class="btn-clear" type="button">Limpar filtros</button></div>
     </div>
     <div id="statusMessage" role="status" aria-live="polite"></div>
+    <div id="diagnosticSummary" class="diagnostic-summary" role="status" aria-live="polite"></div>
   </section>
 
   <section class="panel">
@@ -494,6 +498,15 @@
     select.replaceChildren(new Option("Todas as fontes", ""));
     const sourceOptions = $("sourcePickerOptions");
     if (sourceOptions) sourceOptions.replaceChildren();
+    if (sourceOptions) {
+      const allOption = document.createElement("button");
+      allOption.type = "button";
+      allOption.className = "source-picker-option";
+      allOption.setAttribute("role", "option");
+      allOption.dataset.value = "";
+      allOption.textContent = "Todas as fontes";
+      sourceOptions.append(allOption);
+    }
     const container = $("sourcesList");
     if (container) container.replaceChildren();
 
@@ -580,7 +593,7 @@
   $("analysisCloseBtn").onclick = closeAnalysis;
   analysisOverlay.onclick = (e) => { if (e.target === analysisOverlay) closeAnalysis(); };
   const analysisTypeLabels = { contratacao_publica: "Contratação pública", financiamento_de_projeto: "Financiamento de projeto", premio_ou_concurso: "Prêmio ou concurso", beneficio_individual: "Benefício ou pagamento individual", credenciamento: "Credenciamento", patrocinio: "Patrocínio", oportunidade_continua: "Oportunidade contínua", conteudo_informativo: "Conteúdo informativo", outro: "Outra oportunidade" };
-  const sourceLabels = { COMPRAS_BR: "Compras BR", compras_br: "Compras BR" };
+  const sourceLabels = { capta: "Capta", pncp: "PNCP", prosas: "Prosas", ligacriativa: "Liga Criativa", queridodiario: "Querido Diário", comprasgov: "Compras.gov.br", COMPRAS_BR: "Compras BR", compras_br: "Compras BR" };
   const deliveryTypeLabels = { projeto_estruturado: "Projeto estruturado", solucao_tecnica: "Solução técnica", estrategia_de_candidatura: "Estratégia de candidatura", dossie_de_trajetoria: "Dossiê de trajetória", plano_de_inscricao: "Plano de inscrição", plano_de_habilitacao: "Plano de habilitação" };
   const checklistTypeLabels = { obrigatorio: "Obrigatório", recomendado: "Recomendado", confirmar: "Confirmar" };
   function humanType(value) { return analysisTypeLabels[value] || String(value || "Tipo não localizado").replace(/_/g, " "); }
@@ -791,6 +804,7 @@
   function renderTable(data) {
     $("totalCount").textContent = `(${data.total ?? 0})`;
     const tbody = $("resultsTable");
+    renderDiagnostics(data.diagnostics || []);
     tbody.replaceChildren();
 
     if (!data.items?.length) {
@@ -849,6 +863,14 @@
     }
   }
 
+  function renderDiagnostics(diagnostics) {
+    const box = $("diagnosticSummary");
+    if (!box) return;
+    const found = diagnostics.filter(item => Number(item.quantidade_filtrada) > 0).map(item => `${humanSource(item.fonte)} (${item.quantidade_filtrada})`);
+    const empty = diagnostics.filter(item => !Number(item.quantidade_filtrada)).map(item => `${humanSource(item.fonte)} ${item.status === "falha_no_adapter" ? "com falha no adapter" : item.status === "atualizacao_pendente" ? "com atualização pendente" : item.status === "sem_dados" ? "sem dados sincronizados" : "sem correspondência"}`);
+    box.textContent = [...(found.length ? [`${found.join(", ")} encontrados.`] : []), ...empty].join(" ");
+  }
+
   async function executeSearch() {
     const searchBtn = $("searchBtn");
     searchBtn.disabled = true;
@@ -878,6 +900,9 @@
   }
 
   $("searchBtn").onclick = executeSearch;
+  $("clearFiltersBtn").onclick = () => {
+    $("texto").value = ""; $("modo").value = ""; $("fonte").value = ""; $("dataInicio").value = todayIso; $("limit").value = "20"; syncSourcePicker(); executeSearch();
+  };
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modalOverlay.classList.contains("active")) closeModal();
     if (e.key === "Escape" && analysisOverlay.classList.contains("active")) closeAnalysis();

@@ -10,7 +10,7 @@ export const TECHNOLOGY_QUERIES: Array<{ id: string; label: string; terms: strin
   {
     id: "ia",
     label: "Inteligência Artificial e Chatbots",
-    terms: ["inteligência artificial", "chatbot", "assistente virtual", "automação de processos", "RPA", "machine learning", "processamento de linguagem natural", "IA generativa", "agente virtual", "LLM"]
+    terms: ["inteligência artificial", "IA", "IA generativa", "machine learning", "aprendizado de máquina", "deep learning", "LLM", "chatbot", "assistente virtual", "processamento de linguagem natural", "visão computacional", "reconhecimento de voz"]
   },
   {
     id: "nuvem",
@@ -20,17 +20,17 @@ export const TECHNOLOGY_QUERIES: Array<{ id: string; label: string; terms: strin
   {
     id: "dados",
     label: "Projetos de Dados e BI",
-    terms: ["business intelligence", "data warehouse", "data lake", "engenharia de dados", "painéis gerenciais", "Power BI", "banco de dados", "big data", "dashboard", "BI", "ETL", "Metabase"]
+    terms: ["business intelligence", "inteligência de negócios", "BI", "data warehouse", "data lake", "lakehouse", "ETL", "ELT", "engenharia de dados", "governança de dados", "painel gerencial", "dashboard", "Power BI", "Tableau", "Qlik", "modelagem dimensional", "banco de dados analítico", "analytics"]
   },
   {
     id: "ciberseguranca",
     label: "Cibersegurança e Proteção de Dados",
-    terms: ["segurança da informação", "cibersegurança", "pentest", "teste de intrusão", "SOC", "SIEM", "LGPD", "firewall", "antiddos", "proteção de dados", "resposta a incidentes", "monitoramento de segurança"]
+    terms: ["cibersegurança", "segurança da informação", "segurança cibernética", "SOC", "SIEM", "firewall", "antimalware", "antivírus", "pentest", "teste de invasão", "gestão de vulnerabilidades", "LGPD", "proteção de dados pessoais", "DLP", "IAM", "PAM", "resposta a incidentes"]
   },
   {
     id: "ust",
     label: "Contratos por UST ou Pontos de Função",
-    terms: ["Unidade de Serviço Técnico", "UST", "Pontos de Função", "APF", "Análise de Pontos de Função", "IFPUG", "NESMA", "Story Points", "estimativa de software"]
+    terms: ["unidade de serviço técnico", "unidade de serviço tecnológica", "UST", "ponto de função", "pontos de função", "análise de pontos de função", "APF", "métrica de software", "contagem de função"]
   },
   {
     id: "consultoria",
@@ -40,7 +40,7 @@ export const TECHNOLOGY_QUERIES: Array<{ id: string; label: string; terms: strin
   {
     id: "hardware",
     label: "Hardware e Licenciamento",
-    terms: ["licença de software", "subscrição de software", "servidores", "storage", "switches", "equipamentos de rede", "renovação de garantia", "parque tecnológico", "notebooks", "licenciamento perpétuo", "homologação técnica", "CATMAT", "CATSER"]
+    terms: ["servidor", "workstation", "computador", "notebook", "switch", "roteador", "storage", "appliance", "equipamento de informática", "periférico", "licença de software", "licenciamento de software", "subscrição de software", "Microsoft 365", "Windows Server", "Oracle", "VMware", "Adobe", "antivírus corporativo"]
   }
 ];
 

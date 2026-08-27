@@ -65,7 +65,11 @@ export async function editaisRoutes(app: FastifyInstance) {
       }
     }
   }, async (request) => {
-    return listEditais(request.query as Record<string, unknown>);
+    const result = await listEditais(request.query as Record<string, unknown>);
+    const knownSources = availableSources.map((fonte) => fonte.toLowerCase());
+    const diagnosticSources = new Map((result.diagnostics || []).map((item) => [String(item.fonte).toLowerCase(), item]));
+    result.diagnostics = [...knownSources.map((fonte) => diagnosticSources.get(fonte) || ({ fonte, status: "sem_dados", quantidade_bruta: 0, quantidade_filtrada: 0, menor_data: null, maior_data: null, ultima_coleta: null, ultima_execucao: "nao_executado", ultimo_erro: null, ultima_execucao_em: null })), ...(result.diagnostics || []).filter((item) => !knownSources.includes(String(item.fonte).toLowerCase()))];
+    return result;
   });
 
   app.get("/sources", {

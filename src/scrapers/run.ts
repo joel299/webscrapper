@@ -5,7 +5,7 @@ import { pncpScraper } from "./sources/pncp.js";
 import { queridoDiarioScraper } from "./sources/queridodiario.js";
 import { comprasGovScraper } from "./sources/comprasgov.js";
 import { comprasBrScraper } from "./sources/comprasbr.js";
-
+import { finishScraperRun, startScraperRun } from "./runStatus.js";
 
 const scrapers = {
   capta: captaScraper,
@@ -32,19 +32,26 @@ function normalizeFonte(input: string) {
   return null;
 }
 
+async function runOne(source: keyof typeof scrapers) {
+  let runId: number | null = null;
+  try {
+    runId = await startScraperRun(source);
+    await scrapers[source]();
+    await finishScraperRun(runId, "completed");
+  } catch (error) {
+    if (runId !== null) await finishScraperRun(runId, "failed", 0, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+}
+
 export async function runScrapers(fonte: string) {
   if (fonte === "all") {
-    for (const scraper of Object.values(scrapers)) {
-      await scraper();
+    for (const source of Object.keys(scrapers) as Array<keyof typeof scrapers>) {
+      try { await runOne(source); } catch (error) { console.error(`[scraper] fonte=${source} falhou: ${String(error)}`); }
     }
     return;
   }
-
   const normalized = normalizeFonte(fonte);
-  const scraper = normalized ? scrapers[normalized] : undefined;
-  if (!scraper) {
-    throw new Error(`Fonte nao suportada: ${fonte}`);
-  }
-
-  await scraper();
+  if (!normalized) throw new Error(`Fonte nao suportada: ${fonte}`);
+  await runOne(normalized);
 }
