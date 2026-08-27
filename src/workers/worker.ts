@@ -5,10 +5,13 @@ import { runAnalysis } from "../analysis/editalAnalysis.js";
 import { runCleanup } from "./cleanup.js";
 import { scraperQueue } from "./queue.js";
 import { availableSources } from "../scrapers/run.js";
+import { runMigrations } from "../db/migrate.js";
 
 const connection = {
   url: env.REDIS_URL
 };
+
+await runMigrations();
 
 new Worker(
   "scraper",
