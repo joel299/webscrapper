@@ -56,10 +56,17 @@ export async function editaisRoutes(app: FastifyInstance) {
                   whatsapp: { type: ["string", "null"] },
                   site_oficial: { type: ["string", "null"] },
                   analysis_status: { type: ["string", "null"] },
-                  analysis_id: { type: ["string", "null"] }
+                  analysis_id: { type: ["string", "null"] },
+                  relevance_score: { type: "number" },
+                  relevance_terms: { type: "array", items: { type: "string" } },
+                  relevance_fields: { type: "array", items: { type: "string" } },
+                  relevance_reason: { type: "string" }
                 }
               }
-            }
+            },
+            diagnostics: { type: "array", items: { type: "object", additionalProperties: true } },
+            fontes_solicitadas: { type: "array", items: { type: "string" } },
+            fontes_com_resultados: { type: "array", items: { type: "string" } }
           }
         }
       }
